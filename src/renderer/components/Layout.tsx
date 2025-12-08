@@ -1,5 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useMode } from '../contexts/ModeContext';
+import { useAppText } from '../utils/textResource';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -7,38 +9,54 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
+  const { isKidsMode, toggleMode } = useMode();
+  const { getText } = useAppText();
 
   const isActive = (path: string) => location.pathname === path;
 
   const navItems = [
-    { path: '/', label: '書籍管理', icon: '📚' },
-    { path: '/employees', label: '社員管理', icon: '👥' },
-    { path: '/loans', label: '貸出・返却', icon: '🔄' },
-    { path: '/history', label: '履歴', icon: '📋' },
-  ];
+    { path: '/', label: getText('menuBooks'), icon: '📚' },
+    { path: '/employees', label: getText('menuEmployees'), icon: '👥', hiddenInKids: true },
+    { path: '/loans', label: getText('menuLoans'), icon: '🔄' },
+    { path: '/history', label: getText('menuHistory'), icon: '📋', hiddenInKids: true },
+  ].filter(item => !isKidsMode || !item.hiddenInKids);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Skip to main content link for accessibility */}
-      <a 
-        href="#main-content" 
+      <a
+        href="#main-content"
         className="skip-link focus:top-4"
       >
         メインコンテンツへスキップ
       </a>
 
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8">
+      <header className={`${isKidsMode ? 'bg-orange-100' : 'bg-white'} shadow-sm border-b border-gray-200 transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900 flex items-center">
             <span className="mr-3 text-primary-600">📖</span>
-            社内図書管理システム
+            {getText('appTitle')}
           </h1>
+
+          <button
+            onClick={toggleMode}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm transition-all shadow-sm
+              ${isKidsMode
+                ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500 ring-2 ring-yellow-200'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 ring-1 ring-gray-200'}
+            `}
+            aria-label={isKidsMode ? '通常モードに切り替え' : 'キッズモードに切り替え'}
+          >
+            <span>{isKidsMode ? '👶' : '👨‍💼'}</span>
+            <span>{isKidsMode ? getText('modeToggleKids') : getText('modeToggleNormal')}</span>
+          </button>
         </div>
       </header>
-      
+
       {/* Navigation */}
-      <nav 
+      <nav
         className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40"
         role="navigation"
         aria-label="メインナビゲーション"
@@ -57,15 +75,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   transition-all duration-200 ease-in-out
                   focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500
                   flex items-center gap-2
-                  ${
-                    isActive(item.path)
-                      ? 'border-primary-500 text-primary-600 bg-primary-50'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50'
+                  ${isActive(item.path)
+                    ? 'border-primary-500 text-primary-600 bg-primary-50'
+                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50'
                   }
                 `}
               >
-                <span aria-hidden="true">{item.icon}</span>
-                <span>{item.label}</span>
+                <span aria-hidden="true" className={isKidsMode ? 'text-2xl' : ''}>{item.icon}</span>
+                <span className={isKidsMode ? 'text-lg font-bold' : ''}>{item.label}</span>
               </Link>
             ))}
           </div>
@@ -73,7 +90,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </nav>
 
       {/* Main Content */}
-      <main 
+      <main
         id="main-content"
         className="flex-1 max-w-7xl w-full mx-auto py-6 px-4 sm:px-6 lg:px-8"
         role="main"
@@ -85,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <footer className="bg-white border-t border-gray-200 mt-auto">
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-500">
-            © 2024 社内図書管理システム
+            © 2024 {getText('footerCopy')}
           </p>
         </div>
       </footer>

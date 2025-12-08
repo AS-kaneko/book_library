@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Layout, ToastContainer, useToast as useToastHook } from './components';
+import { ModeProvider } from './contexts/ModeContext';
 import BookManagementPage from './pages/BookManagementPage';
 import EmployeeManagementPage from './pages/EmployeeManagementPage';
 import LoanManagementPage from './pages/LoanManagementPage';
@@ -23,10 +24,12 @@ const App: React.FC = () => {
   const { toasts, removeToast } = useToastHook();
 
   return (
-    <Router>
-      <AppContent />
-      <ToastContainer toasts={toasts} removeToast={removeToast} />
-    </Router>
+    <ModeProvider>
+      <Router>
+        <AppContent />
+        <ToastContainer toasts={toasts} removeToast={removeToast} />
+      </Router>
+    </ModeProvider>
   );
 };
 
