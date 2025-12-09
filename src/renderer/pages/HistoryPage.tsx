@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { LoanRecord, LoanStatus } from '../../models/LoanRecord';
 import { Book } from '../../models/Book';
 import { Employee } from '../../models/Employee';
-import { Table, useToast } from '../components';
+import { Table, useToast, RubyText } from '../components';
+import { useAppText } from '../utils/textResource';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -33,6 +34,7 @@ const HistoryPage: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const { showError } = useToast();
+  const { getText } = useAppText();
 
   useEffect(() => {
     loadData();
@@ -72,7 +74,7 @@ const HistoryPage: React.FC = () => {
       
       setHistory(historyWithDetails);
     } catch (error: any) {
-      showError(error.message || '履歴の読み込みに失敗しました');
+      showError(error.message || getText('errorLoadHistory'));
     } finally {
       setLoading(false);
     }
@@ -171,7 +173,7 @@ const HistoryPage: React.FC = () => {
           onClick={() => handleSort('bookTitle')}
           className="flex items-center space-x-1 hover:text-blue-600"
         >
-          <span>書籍タイトル</span>
+          <span>{getText('colBookTitle')}</span>
           <SortIcon field="bookTitle" />
         </button>
       ) as any,
@@ -183,7 +185,7 @@ const HistoryPage: React.FC = () => {
           onClick={() => handleSort('employeeName')}
           className="flex items-center space-x-1 hover:text-blue-600"
         >
-          <span>借りた人</span>
+          <span>{getText('colBorrower')}</span>
           <SortIcon field="employeeName" />
         </button>
       ) as any,
@@ -195,7 +197,7 @@ const HistoryPage: React.FC = () => {
           onClick={() => handleSort('borrowedAt')}
           className="flex items-center space-x-1 hover:text-blue-600"
         >
-          <span>貸出日</span>
+          <span>{getText('colBorrowDate')}</span>
           <SortIcon field="borrowedAt" />
         </button>
       ) as any,
@@ -210,7 +212,7 @@ const HistoryPage: React.FC = () => {
           onClick={() => handleSort('returnedAt')}
           className="flex items-center space-x-1 hover:text-blue-600"
         >
-          <span>返却日</span>
+          <span>{getText('colBorrowDate')}</span>
           <SortIcon field="returnedAt" />
         </button>
       ) as any,
@@ -221,7 +223,7 @@ const HistoryPage: React.FC = () => {
       }) as any,
     },
     {
-      header: '状態',
+      header: getText('colStatus'),
       accessor: ((loan: LoanHistoryWithDetails) => (
         <span
           className={`px-2 py-1 rounded text-xs font-semibold ${
@@ -230,12 +232,12 @@ const HistoryPage: React.FC = () => {
               : 'bg-gray-100 text-gray-800'
           }`}
         >
-          {loan.status === LoanStatus.ACTIVE ? '貸出中' : '返却済み'}
+          {loan.status === LoanStatus.ACTIVE ? getText('filterActive') : getText('filterReturned')}
         </span>
       )) as any,
     },
     {
-      header: '貸出期間',
+      header: getText('colLoanPeriod'),
       accessor: ((loan: LoanHistoryWithDetails) => {
         const borrowDate = new Date(loan.borrowedAt);
         const returnDate = loan.returnedAt ? new Date(loan.returnedAt) : new Date();
@@ -248,24 +250,28 @@ const HistoryPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">貸出履歴</h2>
+      <h2 className="text-2xl font-bold text-gray-900">
+        <RubyText>{getText('historyTitle')}</RubyText>
+      </h2>
 
       {/* フィルターセクション */}
       <div className="bg-white p-6 rounded-lg shadow space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900">フィルター</h3>
-        
+        <h3 className="text-lg font-semibold text-gray-900">
+          <RubyText>{getText('filterTitle')}</RubyText>
+        </h3>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* 書籍フィルター */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              書籍
+              <RubyText>{getText('colBookTitle')}</RubyText>
             </label>
             <select
               value={selectedBookId}
               onChange={(e) => setSelectedBookId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="">すべての書籍</option>
+              <option value="">{getText('filterAllBooks')}</option>
               {books.map((book) => (
                 <option key={book.id} value={book.id}>
                   {book.title}
@@ -277,14 +283,14 @@ const HistoryPage: React.FC = () => {
           {/* 社員フィルター */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              社員
+              <RubyText>{getText('colBorrower')}</RubyText>
             </label>
             <select
               value={selectedEmployeeId}
               onChange={(e) => setSelectedEmployeeId(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="">すべての社員</option>
+              <option value="">{getText('filterAllEmployees')}</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
                   {employee.name}
@@ -296,23 +302,23 @@ const HistoryPage: React.FC = () => {
           {/* 状態フィルター */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              状態
+              <RubyText>{getText('colStatus')}</RubyText>
             </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
-              <option value="all">すべて</option>
-              <option value={LoanStatus.ACTIVE}>貸出中</option>
-              <option value={LoanStatus.RETURNED}>返却済み</option>
+              <option value="all">{getText('filterAllStatus')}</option>
+              <option value={LoanStatus.ACTIVE}>{getText('filterActive')}</option>
+              <option value={LoanStatus.RETURNED}>{getText('filterReturned')}</option>
             </select>
           </div>
 
           {/* 開始日 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              開始日
+              <RubyText>{getText('labelStartDate')}</RubyText>
             </label>
             <input
               type="date"
@@ -325,7 +331,7 @@ const HistoryPage: React.FC = () => {
           {/* 終了日 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              終了日
+              <RubyText>{getText('labelEndDate')}</RubyText>
             </label>
             <input
               type="date"
@@ -341,24 +347,24 @@ const HistoryPage: React.FC = () => {
               onClick={clearFilters}
               className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
             >
-              フィルターをクリア
+              {getText('btnClearFilters')}
             </button>
           </div>
         </div>
 
         <div className="text-sm text-gray-600">
-          {filteredHistory.length} 件の履歴が見つかりました
+          {filteredHistory.length} {getText('historyCount')}
         </div>
       </div>
 
       {/* 履歴テーブル */}
       {loading ? (
-        <div className="text-center py-8">読み込み中...</div>
+        <div className="text-center py-8">{getText('loadingHistory')}</div>
       ) : (
         <Table
           columns={columns}
           data={filteredHistory}
-          emptyMessage="履歴が見つかりません"
+          emptyMessage={getText('emptyHistory')}
         />
       )}
     </div>

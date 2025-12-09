@@ -1,4 +1,5 @@
 import React from 'react';
+import { useMode } from '../contexts/ModeContext';
 
 interface Column<T> {
   header: string;
@@ -26,6 +27,14 @@ function Table<T extends { id: string }>({
   striped = false,
   hoverable = true,
 }: TableProps<T>) {
+  const { isKidsMode } = useMode();
+
+  // キッズモード時のスタイルクラス
+  const headerFontSize = isKidsMode ? 'text-lg' : 'text-xs';
+  const cellFontSize = isKidsMode ? 'text-base' : 'text-sm';
+  const cellPadding = isKidsMode ? 'px-6 py-5' : 'px-6 py-4';
+  const headerPadding = isKidsMode ? 'px-6 py-4' : 'px-6 py-3';
+
   const getCellValue = (row: T, column: Column<T>) => {
     if (typeof column.accessor === 'function') {
       return column.accessor(row);
@@ -46,7 +55,7 @@ function Table<T extends { id: string }>({
                 key={index}
                 scope="col"
                 style={column.width ? { width: column.width } : undefined}
-                className={`px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider ${column.className || ''}`}
+                className={`${headerPadding} text-left ${headerFontSize} font-semibold text-gray-700 ${isKidsMode ? '' : 'uppercase'} tracking-wider ${column.className || ''}`}
               >
                 {column.header}
               </th>
@@ -102,7 +111,7 @@ function Table<T extends { id: string }>({
                 {columns.map((column, colIndex) => (
                   <td
                     key={colIndex}
-                    className={`px-6 py-4 text-sm text-gray-900 ${column.className || ''}`}
+                    className={`${cellPadding} ${cellFontSize} text-gray-900 ${column.className || ''}`}
                   >
                     {getCellValue(row, column)}
                   </td>

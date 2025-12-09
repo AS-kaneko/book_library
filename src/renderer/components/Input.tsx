@@ -1,4 +1,6 @@
 import React, { forwardRef } from 'react';
+import { useMode } from '../contexts/ModeContext';
+import { RubyText } from './RubyText';
 
 interface InputProps {
   label?: string;
@@ -39,18 +41,23 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     },
     ref
   ) => {
+    const { isKidsMode } = useMode();
     const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
     const errorId = `${inputId}-error`;
     const helperId = `${inputId}-helper`;
 
+    // キッズモード時のスタイルクラス
+    const labelFontSize = isKidsMode ? 'text-lg' : 'text-sm';
+    const inputFontSize = isKidsMode ? 'text-lg' : 'text-base';
+
     return (
       <div className={`mb-4 ${className}`}>
         {label && (
-          <label 
-            htmlFor={inputId} 
-            className="block text-sm font-medium text-gray-700 mb-1.5"
+          <label
+            htmlFor={inputId}
+            className={`block ${labelFontSize} font-medium text-gray-700 mb-1.5`}
           >
-            {label}
+            <RubyText>{label}</RubyText>
             {required && <span className="text-error-500 ml-1" aria-label="必須">*</span>}
           </label>
         )}
@@ -72,7 +79,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             error ? errorId : helperText ? helperId : undefined
           }
           className={`
-            w-full px-3 py-2 text-base
+            w-full px-3 py-2 ${inputFontSize}
             border rounded-md shadow-sm
             transition-colors duration-200
             focus:outline-none focus:ring-2 focus:ring-offset-0

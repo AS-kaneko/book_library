@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Book } from '../../models/Book';
 import { Employee } from '../../models/Employee';
 import { LoanRecord } from '../../models/LoanRecord';
-import { Button, Input, Table, useToast } from '../components';
+import { Button, Input, Table, useToast, RubyText } from '../components';
+import { useAppText } from '../utils/textResource';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -28,6 +29,7 @@ const LoanManagementPage: React.FC = () => {
   const [returnLoanInfo, setReturnLoanInfo] = useState<LoanRecord | null>(null);
 
   const { showSuccess, showError } = useToast();
+  const { getText } = useAppText();
 
   // Refs for auto-focus
   const employeeBarcodeRef = useRef<HTMLInputElement>(null);
@@ -66,7 +68,7 @@ const LoanManagementPage: React.FC = () => {
       
       setActiveLoans(loansWithDetails);
     } catch (error: any) {
-      showError(error.message || '貸出情報の読み込みに失敗しました');
+      showError(error.message || getText('errorLoadLoans'));
     } finally {
       setLoading(false);
     }
@@ -87,7 +89,7 @@ const LoanManagementPage: React.FC = () => {
         // 次のフィールドにフォーカス
         bookISBNRef.current?.focus();
       } catch (error: any) {
-        showError(error.message || '社員が見つかりません');
+        showError(error.message || getText('errorNotFound'));
         setSelectedEmployee(null);
         setEmployeeLoanCount(0);
       }
@@ -102,7 +104,7 @@ const LoanManagementPage: React.FC = () => {
         const book = await ipcRenderer.invoke('books:getByISBN', bookISBN);
         setSelectedBook(book);
       } catch (error: any) {
-        showError(error.message || '書籍が見つかりません');
+        showError(error.message || getText('errorNotFound'));
         setSelectedBook(null);
       }
     }
@@ -111,25 +113,25 @@ const LoanManagementPage: React.FC = () => {
   // 貸出処理
   const handleBorrow = async () => {
     if (!selectedEmployee || !selectedBook) {
-      showError('社員と書籍を選択してください');
+      showError(getText('errorValidation'));
       return;
     }
 
     try {
       setLoading(true);
       await ipcRenderer.invoke('loans:borrowByBarcodes', bookISBN, employeeBarcode);
-      showSuccess(`「${selectedBook.title}」を貸し出しました`);
-      
+      showSuccess(getText('successBorrow'));
+
       // フォームをリセット
       resetBorrowForm();
-      
+
       // 貸出一覧を更新
       await loadActiveLoans();
-      
+
       // 最初のフィールドにフォーカス
       employeeBarcodeRef.current?.focus();
     } catch (error: any) {
-      showError(error.message || '貸出処理に失敗しました');
+      showError(error.message || getText('errorBorrow'));
     } finally {
       setLoading(false);
     }
@@ -152,10 +154,10 @@ const LoanManagementPage: React.FC = () => {
           setReturnLoanInfo({ ...activeLoan, employeeName: employee?.name });
         } else {
           setReturnLoanInfo(null);
-          showError('この書籍は貸出中ではありません');
+          showError(getText('errorNotFound'));
         }
       } catch (error: any) {
-        showError(error.message || '書籍が見つかりません');
+        showError(error.message || getText('errorNotFound'));
         setReturnBook(null);
         setReturnLoanInfo(null);
       }
@@ -165,25 +167,25 @@ const LoanManagementPage: React.FC = () => {
   // 返却処理
   const handleReturn = async () => {
     if (!returnBook) {
-      showError('書籍を選択してください');
+      showError(getText('errorValidation'));
       return;
     }
 
     try {
       setLoading(true);
       await ipcRenderer.invoke('loans:returnByISBN', returnISBN);
-      showSuccess(`「${returnBook.title}」を返却しました`);
-      
+      showSuccess(getText('successReturn'));
+
       // フォームをリセット
       resetReturnForm();
-      
+
       // 貸出一覧を更新
       await loadActiveLoans();
-      
+
       // 返却フィールドにフォーカス
       returnISBNRef.current?.focus();
     } catch (error: any) {
-      showError(error.message || '返却処理に失敗しました');
+      showError(error.message || getText('errorReturn'));
     } finally {
       setLoading(false);
     }
@@ -205,22 +207,22 @@ const LoanManagementPage: React.FC = () => {
 
   const columns = [
     {
-      header: '書籍タイトル',
+      header: getText('colBookTitle'),
       accessor: 'bookTitle' as keyof ActiveLoanWithDetails,
     },
     {
-      header: '借りた人',
+      header: getText('colBorrower'),
       accessor: 'employeeName' as keyof ActiveLoanWithDetails,
     },
     {
-      header: '貸出日',
+      header: getText('colBorrowDate'),
       accessor: ((loan: ActiveLoanWithDetails) => {
         const date = new Date(loan.borrowedAt);
         return date.toLocaleDateString('ja-JP');
       }) as any,
     },
     {
-      header: '経過日数',
+      header: getText('colDaysElapsed'),
       accessor: ((loan: ActiveLoanWithDetails) => {
         const borrowDate = new Date(loan.borrowedAt);
         const today = new Date();
@@ -233,21 +235,25 @@ const LoanManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">貸出・返却</h2>
+      <h2 className="text-2xl font-bold text-gray-900">
+        <RubyText>{getText('loansTitle')}</RubyText>
+      </h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 貸出セクション */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">貸出</h3>
-          
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">
+            <RubyText>{getText('sectionLend')}</RubyText>
+          </h3>
+
           <div className="space-y-4">
             <Input
               ref={employeeBarcodeRef}
-              label="会員バーコード"
+              label={getText('labelMemberBarcode')}
               value={employeeBarcode}
               onChange={setEmployeeBarcode}
               onKeyDown={handleEmployeeBarcodeKeyDown}
-              placeholder="会員バーコードをスキャン"
+              placeholder={getText('placeholderMemberBarcode')}
               autoFocus
             />
 
@@ -257,21 +263,21 @@ const LoanManagementPage: React.FC = () => {
                   {selectedEmployee.name}
                 </p>
                 <p className="text-xs text-blue-700">
-                  社員ID: {selectedEmployee.id}
+                  <RubyText>{getText('employeeInfo')}</RubyText>: {selectedEmployee.id}
                 </p>
                 <p className="text-xs text-blue-700">
-                  現在の貸出: {employeeLoanCount} / 3 冊
+                  <RubyText>{getText('loanCount')}</RubyText>: {employeeLoanCount} / 3 冊
                 </p>
               </div>
             )}
 
             <Input
               ref={bookISBNRef}
-              label="ISBNバーコード"
+              label={getText('labelBookBarcode')}
               value={bookISBN}
               onChange={setBookISBN}
               onKeyDown={handleBookISBNKeyDown}
-              placeholder="ISBNバーコードをスキャン"
+              placeholder={getText('placeholderBookBarcode')}
               disabled={!selectedEmployee}
             />
 
@@ -281,10 +287,10 @@ const LoanManagementPage: React.FC = () => {
                   {selectedBook.title}
                 </p>
                 <p className="text-xs text-green-700">
-                  著者: {selectedBook.author}
+                  <RubyText>{getText('labelAuthor')}</RubyText>: {selectedBook.author}
                 </p>
                 <p className="text-xs text-green-700">
-                  ISBN: {selectedBook.isbn}
+                  <RubyText>{getText('labelIsbn')}</RubyText>: {selectedBook.isbn}
                 </p>
               </div>
             )}
@@ -294,7 +300,7 @@ const LoanManagementPage: React.FC = () => {
               disabled={!selectedEmployee || !selectedBook || loading}
               className="w-full"
             >
-              貸出
+              {getText('btnLend')}
             </Button>
 
             {selectedEmployee || selectedBook ? (
@@ -303,7 +309,7 @@ const LoanManagementPage: React.FC = () => {
                 onClick={resetBorrowForm}
                 className="w-full"
               >
-                クリア
+                {getText('btnClear')}
               </Button>
             ) : null}
           </div>
@@ -311,16 +317,18 @@ const LoanManagementPage: React.FC = () => {
 
         {/* 返却セクション */}
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">返却</h3>
-          
+          <h3 className="text-xl font-semibold text-gray-900 mb-4">
+            <RubyText>{getText('sectionReturn')}</RubyText>
+          </h3>
+
           <div className="space-y-4">
             <Input
               ref={returnISBNRef}
-              label="ISBNバーコード"
+              label={getText('labelBookBarcode')}
               value={returnISBN}
               onChange={setReturnISBN}
               onKeyDown={handleReturnISBNKeyDown}
-              placeholder="ISBNバーコードをスキャン"
+              placeholder={getText('placeholderBookBarcode')}
             />
 
             {returnBook && (
@@ -329,10 +337,10 @@ const LoanManagementPage: React.FC = () => {
                   {returnBook.title}
                 </p>
                 <p className="text-xs text-yellow-700">
-                  著者: {returnBook.author}
+                  <RubyText>{getText('labelAuthor')}</RubyText>: {returnBook.author}
                 </p>
                 <p className="text-xs text-yellow-700">
-                  ISBN: {returnBook.isbn}
+                  <RubyText>{getText('labelIsbn')}</RubyText>: {returnBook.isbn}
                 </p>
               </div>
             )}
@@ -340,10 +348,10 @@ const LoanManagementPage: React.FC = () => {
             {returnLoanInfo && (
               <div className="bg-gray-50 p-4 rounded border border-gray-200">
                 <p className="text-sm font-semibold text-gray-900">
-                  借りた人: {(returnLoanInfo as any).employeeName}
+                  <RubyText>{getText('colBorrower')}</RubyText>: {(returnLoanInfo as any).employeeName}
                 </p>
                 <p className="text-xs text-gray-700">
-                  貸出日: {new Date(returnLoanInfo.borrowedAt).toLocaleDateString('ja-JP')}
+                  <RubyText>{getText('colBorrowDate')}</RubyText>: {new Date(returnLoanInfo.borrowedAt).toLocaleDateString('ja-JP')}
                 </p>
               </div>
             )}
@@ -354,7 +362,7 @@ const LoanManagementPage: React.FC = () => {
               className="w-full"
               variant="success"
             >
-              返却
+              {getText('btnReturn')}
             </Button>
 
             {returnBook ? (
@@ -363,7 +371,7 @@ const LoanManagementPage: React.FC = () => {
                 onClick={resetReturnForm}
                 className="w-full"
               >
-                クリア
+                {getText('btnClear')}
               </Button>
             ) : null}
           </div>
@@ -372,14 +380,16 @@ const LoanManagementPage: React.FC = () => {
 
       {/* 現在貸出中の書籍一覧 */}
       <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-xl font-semibold text-gray-900 mb-4">現在貸出中の書籍</h3>
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">
+          <RubyText>{getText('activeLoansTitle')}</RubyText>
+        </h3>
         {loading ? (
-          <div className="text-center py-8">読み込み中...</div>
+          <div className="text-center py-8">{getText('loadingLoans')}</div>
         ) : (
           <Table
             columns={columns}
             data={activeLoans}
-            emptyMessage="現在貸出中の書籍はありません"
+            emptyMessage={getText('emptyActiveLoans')}
           />
         )}
       </div>

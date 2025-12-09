@@ -8,7 +8,7 @@ interface ModeContextType {
 const ModeContext = createContext<ModeContextType | undefined>(undefined);
 
 export const ModeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [isKidsMode, setIsKidsMode] = useState(false);
+    const [isKidsMode, setIsKidsMode] = useState(true);
 
     const toggleMode = () => {
         setIsKidsMode(prev => !prev);

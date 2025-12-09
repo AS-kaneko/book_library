@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Employee } from '../../models/Employee';
-import { Button, Input, Table, Modal, useToast } from '../components';
+import { Button, Input, Table, Modal, useToast, RubyText } from '../components';
 import { validateEmail, validateRequired, combineValidations } from '../../utils/validation';
+import { useAppText } from '../utils/textResource';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -20,6 +21,7 @@ const EmployeeManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const { showSuccess, showError } = useToast();
+  const { getText } = useAppText();
 
   // Form states
   const [formData, setFormData] = useState({
@@ -51,7 +53,7 @@ const EmployeeManagementPage: React.FC = () => {
       
       setEmployees(employeesWithCount);
     } catch (error: any) {
-      showError(error.message || '社員の読み込みに失敗しました');
+      showError(error.message || getText('errorLoadEmployees'));
     } finally {
       setLoading(false);
     }
@@ -66,19 +68,19 @@ const EmployeeManagementPage: React.FC = () => {
     const validation = combineValidations(idValidation, nameValidation, emailValidation);
 
     if (!validation.isValid) {
-      showError(validation.error || 'すべての項目を正しく入力してください');
+      showError(validation.error || getText('errorValidation'));
       return;
     }
 
     try {
       setLoading(true);
       await ipcRenderer.invoke('employees:add', formData.id, formData.name, formData.email);
-      showSuccess('社員を追加しました');
+      showSuccess(getText('successAddEmployee'));
       setIsAddModalOpen(false);
       resetForm();
       await loadEmployees();
     } catch (error: any) {
-      showError(error.message || '社員の追加に失敗しました');
+      showError(error.message || getText('errorAddEmployee'));
     } finally {
       setLoading(false);
     }
@@ -86,7 +88,7 @@ const EmployeeManagementPage: React.FC = () => {
 
   const handleEditEmployee = async () => {
     if (!selectedEmployee) {
-      showError('社員が選択されていません');
+      showError(getText('errorNotFound'));
       return;
     }
 
@@ -97,7 +99,7 @@ const EmployeeManagementPage: React.FC = () => {
     const validation = combineValidations(nameValidation, emailValidation);
 
     if (!validation.isValid) {
-      showError(validation.error || 'すべての項目を正しく入力してください');
+      showError(validation.error || getText('errorValidation'));
       return;
     }
 
@@ -107,13 +109,13 @@ const EmployeeManagementPage: React.FC = () => {
         name: formData.name,
         email: formData.email,
       });
-      showSuccess('社員情報を更新しました');
+      showSuccess(getText('successUpdateEmployee'));
       setIsEditModalOpen(false);
       setSelectedEmployee(null);
       resetForm();
       await loadEmployees();
     } catch (error: any) {
-      showError(error.message || '社員情報の更新に失敗しました');
+      showError(error.message || getText('errorUpdateEmployee'));
     } finally {
       setLoading(false);
     }
@@ -125,12 +127,12 @@ const EmployeeManagementPage: React.FC = () => {
     try {
       setLoading(true);
       await ipcRenderer.invoke('employees:delete', selectedEmployee.id);
-      showSuccess('社員を削除しました');
+      showSuccess(getText('successDeleteEmployee'));
       setIsDeleteModalOpen(false);
       setSelectedEmployee(null);
       await loadEmployees();
     } catch (error: any) {
-      showError(error.message || '社員の削除に失敗しました');
+      showError(error.message || getText('errorDeleteEmployee'));
     } finally {
       setLoading(false);
     }
@@ -143,9 +145,9 @@ const EmployeeManagementPage: React.FC = () => {
       setBarcodeImagePath(imagePath);
       setSelectedEmployee(employee);
       setIsBarcodeModalOpen(true);
-      showSuccess('バーコードを生成しました');
+      showSuccess(getText('successBarcode'));
     } catch (error: any) {
-      showError(error.message || 'バーコードの生成に失敗しました');
+      showError(error.message || getText('errorBarcode'));
     } finally {
       setLoading(false);
     }
@@ -176,19 +178,19 @@ const EmployeeManagementPage: React.FC = () => {
 
   const columns = [
     {
-      header: '社員ID',
+      header: getText('colEmployeeId'),
       accessor: 'id' as keyof EmployeeWithLoanCount,
     },
     {
-      header: '名前',
+      header: getText('colName'),
       accessor: 'name' as keyof EmployeeWithLoanCount,
     },
     {
-      header: 'メールアドレス',
+      header: getText('colEmail'),
       accessor: 'email' as keyof EmployeeWithLoanCount,
     },
     {
-      header: '貸出中',
+      header: getText('colLoaned'),
       accessor: ((employee: EmployeeWithLoanCount) => (
         <span className="font-semibold">
           {employee.activeLoanCount || 0} 冊
@@ -196,7 +198,7 @@ const EmployeeManagementPage: React.FC = () => {
       )) as any,
     },
     {
-      header: '操作',
+      header: getText('colActions'),
       accessor: ((employee: EmployeeWithLoanCount) => (
         <div className="flex space-x-2">
           <Button
@@ -207,7 +209,7 @@ const EmployeeManagementPage: React.FC = () => {
             }}
             className="text-xs px-3 py-1"
           >
-            バーコード
+            {getText('btnBarcode')}
           </Button>
           <Button
             variant="secondary"
@@ -217,7 +219,7 @@ const EmployeeManagementPage: React.FC = () => {
             }}
             className="text-xs px-3 py-1"
           >
-            編集
+            {getText('actionEdit')}
           </Button>
           <Button
             variant="danger"
@@ -227,7 +229,7 @@ const EmployeeManagementPage: React.FC = () => {
             }}
             className="text-xs px-3 py-1"
           >
-            削除
+            {getText('actionDelete')}
           </Button>
         </div>
       )) as any,
@@ -237,15 +239,17 @@ const EmployeeManagementPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">社員管理</h2>
-        <Button onClick={() => setIsAddModalOpen(true)}>社員を追加</Button>
+        <h2 className="text-2xl font-bold text-gray-900">
+          <RubyText>{getText('employeesTitle')}</RubyText>
+        </h2>
+        <Button onClick={() => setIsAddModalOpen(true)}>{getText('btnAddEmployee')}</Button>
       </div>
 
       {/* 社員一覧テーブル */}
       {loading ? (
-        <div className="text-center py-8">読み込み中...</div>
+        <div className="text-center py-8">{getText('loadingEmployees')}</div>
       ) : (
-        <Table columns={columns} data={employees} emptyMessage="社員が見つかりません" />
+        <Table columns={columns} data={employees} emptyMessage={getText('emptyEmployees')} />
       )}
 
       {/* 追加モーダル */}
@@ -255,7 +259,7 @@ const EmployeeManagementPage: React.FC = () => {
           setIsAddModalOpen(false);
           resetForm();
         }}
-        title="社員を追加"
+        title={getText('modalAddEmployee')}
         footer={
           <>
             <Button
@@ -265,10 +269,10 @@ const EmployeeManagementPage: React.FC = () => {
                 resetForm();
               }}
             >
-              キャンセル
+              {getText('btnCancel')}
             </Button>
             <Button onClick={handleAddEmployee} disabled={loading}>
-              追加
+              {getText('btnAdd')}
             </Button>
           </>
         }
@@ -284,7 +288,7 @@ const EmployeeManagementPage: React.FC = () => {
           setSelectedEmployee(null);
           resetForm();
         }}
-        title="社員情報を編集"
+        title={getText('modalEditEmployee')}
         footer={
           <>
             <Button
@@ -295,10 +299,10 @@ const EmployeeManagementPage: React.FC = () => {
                 resetForm();
               }}
             >
-              キャンセル
+              {getText('btnCancel')}
             </Button>
             <Button onClick={handleEditEmployee} disabled={loading}>
-              更新
+              {getText('btnUpdate')}
             </Button>
           </>
         }
@@ -313,7 +317,7 @@ const EmployeeManagementPage: React.FC = () => {
           setIsDeleteModalOpen(false);
           setSelectedEmployee(null);
         }}
-        title="社員を削除"
+        title={getText('modalDeleteEmployee')}
         size="sm"
         closeOnOverlayClick={false}
         footer={
@@ -326,7 +330,7 @@ const EmployeeManagementPage: React.FC = () => {
               }}
               ariaLabel="キャンセル"
             >
-              キャンセル
+              {getText('btnCancel')}
             </Button>
             <Button
               variant="danger"
@@ -334,7 +338,7 @@ const EmployeeManagementPage: React.FC = () => {
               loading={loading}
               ariaLabel="社員を削除"
             >
-              削除
+              {getText('btnDelete')}
             </Button>
           </>
         }
@@ -359,11 +363,11 @@ const EmployeeManagementPage: React.FC = () => {
             </div>
             <div className="flex-1">
               <p className="text-base text-gray-900 font-medium mb-2">
-                本当に削除しますか？
+                <RubyText>{getText('confirmDelete')}</RubyText>
               </p>
               <p className="text-sm text-gray-700">
-                「{selectedEmployee?.name}」（社員ID: {selectedEmployee?.id}）を削除します。
-                この操作は取り消せません。
+                「{selectedEmployee?.name}」（{getText('labelEmployeeId')}: {selectedEmployee?.id}）を削除します。
+                <RubyText>{getText('deleteWarning')}</RubyText>
               </p>
             </div>
           </div>
@@ -378,7 +382,7 @@ const EmployeeManagementPage: React.FC = () => {
           setSelectedEmployee(null);
           setBarcodeImagePath('');
         }}
-        title="会員バーコード"
+        title={getText('modalBarcode')}
         footer={
           <>
             <Button
@@ -389,27 +393,31 @@ const EmployeeManagementPage: React.FC = () => {
                 setBarcodeImagePath('');
               }}
             >
-              閉じる
+              {getText('btnCancel')}
             </Button>
           </>
         }
       >
         <div className="text-center space-y-4">
           <div>
-            <p className="text-sm text-gray-600 mb-2">社員ID: {selectedEmployee?.id}</p>
-            <p className="text-sm text-gray-600 mb-4">名前: {selectedEmployee?.name}</p>
+            <p className="text-sm text-gray-600 mb-2">
+              <RubyText>{getText('labelEmployeeId')}</RubyText>: {selectedEmployee?.id}
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              <RubyText>{getText('labelName')}</RubyText>: {selectedEmployee?.name}
+            </p>
           </div>
           {barcodeImagePath && (
             <div className="bg-white p-4 border rounded">
               <img
                 src={barcodeImagePath}
-                alt="会員バーコード"
+                alt={getText('modalBarcode')}
                 className="mx-auto"
               />
             </div>
           )}
           <p className="text-xs text-gray-500">
-            社員ID {selectedEmployee?.id} のバーコード画像
+            <RubyText>{getText('barcodeDescription')}</RubyText>
           </p>
         </div>
       </Modal>
@@ -435,33 +443,35 @@ interface EmployeeFormProps {
 }
 
 const EmployeeForm: React.FC<EmployeeFormProps> = ({ formData, setFormData, isEdit }) => {
+  const { getText } = useAppText();
+
   return (
     <div className="space-y-4">
       <Input
-        label="社員ID"
+        label={getText('labelEmployeeId')}
         value={formData.id}
         onChange={(value) => setFormData({ ...formData, id: value })}
         required
         disabled={isEdit}
         id="employeeId"
-        placeholder="例: EMP001"
+        placeholder={getText('placeholderEmployeeId')}
       />
       <Input
-        label="名前"
+        label={getText('labelName')}
         value={formData.name}
         onChange={(value) => setFormData({ ...formData, name: value })}
         required
         id="name"
-        placeholder="例: 山田太郎"
+        placeholder={getText('placeholderName')}
       />
       <Input
-        label="メールアドレス"
+        label={getText('labelEmail')}
         type="email"
         value={formData.email}
         onChange={(value) => setFormData({ ...formData, email: value })}
         required
         id="email"
-        placeholder="例: yamada@company.com"
+        placeholder={getText('placeholderEmail')}
       />
     </div>
   );

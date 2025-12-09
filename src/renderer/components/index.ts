@@ -5,3 +5,5 @@ export { default as Table } from './Table';
 export { default as Modal } from './Modal';
 export { default as Toast, ToastContainer, useToast } from './Toast';
 export type { ToastType } from './Toast';
+export { RubyText } from './RubyText';
+export type { RubyTextProps } from './RubyText';

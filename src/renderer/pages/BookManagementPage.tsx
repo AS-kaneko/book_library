@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Book, BookStatus } from '../../models/Book';
-import { Button, Input, Table, Modal, useToast } from '../components';
+import { Button, Input, Table, Modal, useToast, RubyText } from '../components';
 import { validateISBN, validateRequired, combineValidations } from '../../utils/validation';
+import { useAppText } from '../utils/textResource';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -17,6 +18,7 @@ const BookManagementPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const { showSuccess, showError } = useToast();
+  const { getText } = useAppText();
 
   // Form states
   const [formData, setFormData] = useState({
@@ -40,7 +42,7 @@ const BookManagementPage: React.FC = () => {
       const allBooks = await ipcRenderer.invoke('books:getAll');
       setBooks(allBooks);
     } catch (error: any) {
-      showError(error.message || '書籍の読み込みに失敗しました');
+      showError(error.message || getText('errorLoadBooks'));
     } finally {
       setLoading(false);
     }
@@ -77,7 +79,7 @@ const BookManagementPage: React.FC = () => {
     const validation = combineValidations(titleValidation, authorValidation, isbnValidation);
 
     if (!validation.isValid) {
-      showError(validation.error || 'すべての項目を正しく入力してください');
+      showError(validation.error || getText('errorValidation'));
       return;
     }
 
@@ -92,12 +94,12 @@ const BookManagementPage: React.FC = () => {
         });
       }
 
-      showSuccess('書籍を追加しました');
+      showSuccess(getText('successAddBook'));
       setIsAddModalOpen(false);
       resetForm();
       await loadBooks();
     } catch (error: any) {
-      showError(error.message || '書籍の追加に失敗しました');
+      showError(error.message || getText('errorAddBook'));
     } finally {
       setLoading(false);
     }
@@ -105,7 +107,7 @@ const BookManagementPage: React.FC = () => {
 
   const handleEditBook = async () => {
     if (!selectedBook) {
-      showError('書籍が選択されていません');
+      showError(getText('errorNotFound'));
       return;
     }
 
@@ -117,7 +119,7 @@ const BookManagementPage: React.FC = () => {
     const validation = combineValidations(titleValidation, authorValidation, isbnValidation);
 
     if (!validation.isValid) {
-      showError(validation.error || 'すべての項目を正しく入力してください');
+      showError(validation.error || getText('errorValidation'));
       return;
     }
 
@@ -129,13 +131,13 @@ const BookManagementPage: React.FC = () => {
         isbn: formData.isbn,
         coverImageUrl: formData.coverImageUrl,
       });
-      showSuccess('書籍を更新しました');
+      showSuccess(getText('successUpdateBook'));
       setIsEditModalOpen(false);
       setSelectedBook(null);
       resetForm();
       await loadBooks();
     } catch (error: any) {
-      showError(error.message || '書籍の更新に失敗しました');
+      showError(error.message || getText('errorUpdateBook'));
     } finally {
       setLoading(false);
     }
@@ -147,12 +149,12 @@ const BookManagementPage: React.FC = () => {
     try {
       setLoading(true);
       await ipcRenderer.invoke('books:delete', selectedBook.id);
-      showSuccess('書籍を削除しました');
+      showSuccess(getText('successDeleteBook'));
       setIsDeleteModalOpen(false);
       setSelectedBook(null);
       await loadBooks();
     } catch (error: any) {
-      showError(error.message || '書籍の削除に失敗しました');
+      showError(error.message || getText('errorDeleteBook'));
     } finally {
       setLoading(false);
     }
@@ -185,7 +187,7 @@ const BookManagementPage: React.FC = () => {
 
   const columns = [
     {
-      header: '書影',
+      header: getText('colCover'),
       accessor: ((book: Book) => (
         <div className="flex items-center justify-center">
           {book.coverImageUrl ? (
@@ -200,7 +202,7 @@ const BookManagementPage: React.FC = () => {
             />
           ) : (
             <div className="w-12 h-16 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
-              画像なし
+              {getText('noImage')}
             </div>
           )}
         </div>
@@ -208,22 +210,22 @@ const BookManagementPage: React.FC = () => {
       width: '10%',
     },
     {
-      header: 'タイトル',
+      header: getText('colTitle'),
       accessor: 'title' as keyof Book,
       width: '25%',
     },
     {
-      header: '著者',
+      header: getText('colAuthor'),
       accessor: 'author' as keyof Book,
       width: '20%',
     },
     {
-      header: 'ISBN',
+      header: getText('colIsbn'),
       accessor: 'isbn' as keyof Book,
       width: '15%',
     },
     {
-      header: '状態',
+      header: getText('colStatus'),
       accessor: ((book: Book) => (
         <span
           className={`badge ${
@@ -232,13 +234,13 @@ const BookManagementPage: React.FC = () => {
               : 'badge-error'
           }`}
         >
-          {book.status === BookStatus.AVAILABLE ? '利用可能' : '貸出中'}
+          {book.status === BookStatus.AVAILABLE ? getText('statusAvailable') : getText('statusLent')}
         </span>
       )) as any,
       width: '15%',
     },
     {
-      header: '操作',
+      header: getText('colActions'),
       accessor: ((book: Book) => (
         <div className="flex space-x-2">
           <Button
@@ -250,7 +252,7 @@ const BookManagementPage: React.FC = () => {
             }}
             ariaLabel={`${book.title}を編集`}
           >
-            編集
+            {getText('actionEdit')}
           </Button>
           <Button
             variant="danger"
@@ -261,7 +263,7 @@ const BookManagementPage: React.FC = () => {
             }}
             ariaLabel={`${book.title}を削除`}
           >
-            削除
+            {getText('actionDelete')}
           </Button>
         </div>
       )) as any,
@@ -274,17 +276,19 @@ const BookManagementPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">書籍管理</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            <RubyText>{getText('booksTitle')}</RubyText>
+          </h2>
           <p className="mt-1 text-sm text-gray-600">
-            書籍の登録、編集、削除を行います
+            <RubyText>{getText('booksSubtitle')}</RubyText>
           </p>
         </div>
-        <Button 
+        <Button
           onClick={() => setIsAddModalOpen(true)}
           ariaLabel="新しい書籍を追加"
         >
           <span className="mr-2" aria-hidden="true">➕</span>
-          書籍を追加
+          {getText('btnAddBook')}
         </Button>
       </div>
 
@@ -292,11 +296,10 @@ const BookManagementPage: React.FC = () => {
       <div className="card">
         <div className="card-body space-y-4">
           <Input
-            placeholder="タイトル、著者、ISBNで検索..."
+            placeholder={getText('searchPlaceholder')}
             value={searchQuery}
             onChange={setSearchQuery}
             ariaLabel="書籍を検索"
-            helperText="タイトル、著者名、またはISBN番号で検索できます"
           />
           <div className="flex items-center">
             <input
@@ -306,11 +309,11 @@ const BookManagementPage: React.FC = () => {
               onChange={(e) => setShowAvailableOnly(e.target.checked)}
               className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded cursor-pointer"
             />
-            <label 
-              htmlFor="availableOnly" 
+            <label
+              htmlFor="availableOnly"
               className="ml-2 text-sm text-gray-700 cursor-pointer select-none"
             >
-              利用可能な書籍のみ表示
+              <RubyText>{getText('filterAvailableOnly')}</RubyText>
             </label>
           </div>
         </div>
@@ -321,15 +324,15 @@ const BookManagementPage: React.FC = () => {
         <div className="card">
           <div className="card-body text-center py-12">
             <div className="spinner mx-auto mb-4"></div>
-            <p className="text-gray-600">読み込み中...</p>
+            <p className="text-gray-600">{getText('loadingBooks')}</p>
           </div>
         </div>
       ) : (
-        <Table 
-          columns={columns} 
-          data={filteredBooks} 
-          emptyMessage="書籍が見つかりません"
-          caption="書籍一覧"
+        <Table
+          columns={columns}
+          data={filteredBooks}
+          emptyMessage={getText('emptyBooks')}
+          caption={getText('booksTitle')}
           striped
         />
       )}
@@ -341,7 +344,7 @@ const BookManagementPage: React.FC = () => {
           setIsAddModalOpen(false);
           resetForm();
         }}
-        title="書籍を追加"
+        title={getText('modalAddBook')}
         footer={
           <>
             <Button
@@ -352,14 +355,14 @@ const BookManagementPage: React.FC = () => {
               }}
               ariaLabel="キャンセル"
             >
-              キャンセル
+              {getText('btnCancel')}
             </Button>
-            <Button 
-              onClick={handleAddBook} 
+            <Button
+              onClick={handleAddBook}
               loading={loading}
               ariaLabel="書籍を追加"
             >
-              追加
+              {getText('btnAdd')}
             </Button>
           </>
         }
@@ -375,7 +378,7 @@ const BookManagementPage: React.FC = () => {
           setSelectedBook(null);
           resetForm();
         }}
-        title="書籍を編集"
+        title={getText('modalEditBook')}
         footer={
           <>
             <Button
@@ -387,14 +390,14 @@ const BookManagementPage: React.FC = () => {
               }}
               ariaLabel="キャンセル"
             >
-              キャンセル
+              {getText('btnCancel')}
             </Button>
-            <Button 
-              onClick={handleEditBook} 
+            <Button
+              onClick={handleEditBook}
               loading={loading}
               ariaLabel="書籍を更新"
             >
-              更新
+              {getText('btnUpdate')}
             </Button>
           </>
         }
@@ -409,7 +412,7 @@ const BookManagementPage: React.FC = () => {
           setIsDeleteModalOpen(false);
           setSelectedBook(null);
         }}
-        title="書籍を削除"
+        title={getText('modalDeleteBook')}
         size="sm"
         closeOnOverlayClick={false}
         footer={
@@ -422,15 +425,15 @@ const BookManagementPage: React.FC = () => {
               }}
               ariaLabel="キャンセル"
             >
-              キャンセル
+              {getText('btnCancel')}
             </Button>
-            <Button 
-              variant="danger" 
-              onClick={handleDeleteBook} 
+            <Button
+              variant="danger"
+              onClick={handleDeleteBook}
               loading={loading}
               ariaLabel="書籍を削除"
             >
-              削除
+              {getText('btnDelete')}
             </Button>
           </>
         }
@@ -438,28 +441,28 @@ const BookManagementPage: React.FC = () => {
         <div className="space-y-4">
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0">
-              <svg 
-                className="w-6 h-6 text-error-600" 
-                fill="none" 
-                stroke="currentColor" 
+              <svg
+                className="w-6 h-6 text-error-600"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
                 aria-hidden="true"
               >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
             </div>
             <div className="flex-1">
               <p className="text-base text-gray-900 font-medium mb-2">
-                本当に削除しますか？
+                <RubyText>{getText('confirmDelete')}</RubyText>
               </p>
               <p className="text-sm text-gray-700">
                 「{selectedBook?.title}」を削除します。
-                この操作は取り消せません。
+                <RubyText>{getText('deleteWarning')}</RubyText>
               </p>
             </div>
           </div>
@@ -491,13 +494,14 @@ const BookForm: React.FC<BookFormProps> = ({ formData, setFormData }) => {
   const isbnInputRef = useRef<HTMLInputElement>(null);
   const [fetchingInfo, setFetchingInfo] = useState(false);
   const { showSuccess, showError } = useToast();
+  const { getText } = useAppText();
 
   const handleFetchBookInfo = async () => {
     const cleanISBN = formData.isbn.replace(/[-\s]/g, '');
 
     // ISBN形式チェック
     if (cleanISBN.length !== 10 && cleanISBN.length !== 13) {
-      showError('ISBNは10桁または13桁である必要があります');
+      showError(getText('errorValidation'));
       return;
     }
 
@@ -513,20 +517,10 @@ const BookForm: React.FC<BookFormProps> = ({ formData, setFormData }) => {
         coverImageUrl: bookInfo.coverImageUrl || '',
       });
 
-      showSuccess('書籍情報を取得しました');
+      showSuccess(getText('successBarcode'));
     } catch (error: any) {
       console.error('書籍情報の取得に失敗:', error);
-
-      // エラーメッセージを表示（手動入力を促す）
-      if (error.message.includes('見つかりませんでした')) {
-        showError('ISBNに該当する書籍が見つかりませんでした。手動で入力してください');
-      } else if (error.message.includes('タイムアウト')) {
-        showError('書籍情報の取得がタイムアウトしました。手動で入力してください');
-      } else if (error.message.includes('ネットワーク')) {
-        showError('ネットワークエラーが発生しました。手動で入力してください');
-      } else {
-        showError('書籍情報の取得に失敗しました。手動で入力してください');
-      }
+      showError(getText('errorNotFound'));
     } finally {
       setFetchingInfo(false);
     }
@@ -544,14 +538,13 @@ const BookForm: React.FC<BookFormProps> = ({ formData, setFormData }) => {
     <div className="space-y-4">
       <Input
         ref={isbnInputRef}
-        label="ISBN"
+        label={getText('labelIsbn')}
         value={formData.isbn}
         onChange={(value) => setFormData({ ...formData, isbn: value })}
         onKeyDown={handleISBNKeyDown}
-        placeholder="ISBNバーコードをスキャン、またはEnterキーで自動取得"
+        placeholder={getText('labelIsbn')}
         required
         id="isbn"
-        helperText="ISBNを入力してEnterキーを押すと、自動的に書籍情報を取得します"
       />
       <div className="flex items-center space-x-2">
         <Button
@@ -563,21 +556,23 @@ const BookForm: React.FC<BookFormProps> = ({ formData, setFormData }) => {
           ariaLabel="書籍情報を自動取得"
         >
           <span className="mr-1" aria-hidden="true">🔍</span>
-          書籍情報を自動取得
+          {getText('btnFetchBookInfo')}
         </Button>
         {fetchingInfo && (
-          <span className="text-sm text-gray-600">取得中...</span>
+          <span className="text-sm text-gray-600">{getText('loadingBooks')}</span>
         )}
       </div>
 
       {/* 書影プレビュー */}
       {formData.coverImageUrl && (
         <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <p className="text-sm font-medium text-gray-700 mb-2">書影プレビュー</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">
+            <RubyText>{getText('coverPreview')}</RubyText>
+          </p>
           <div className="flex items-start space-x-4">
             <img
               src={formData.coverImageUrl}
-              alt="書影プレビュー"
+              alt={getText('coverPreview')}
               className="w-24 h-32 object-cover rounded shadow-sm"
               onError={(e) => {
                 e.currentTarget.style.display = 'none';
@@ -585,11 +580,10 @@ const BookForm: React.FC<BookFormProps> = ({ formData, setFormData }) => {
             />
             <div className="flex-1">
               <Input
-                label="書影URL"
+                label={getText('labelCoverUrl')}
                 value={formData.coverImageUrl}
                 onChange={(value) => setFormData({ ...formData, coverImageUrl: value })}
                 id="coverImageUrl"
-                helperText="必要に応じて書影URLを編集できます"
               />
             </div>
           </div>
@@ -597,7 +591,7 @@ const BookForm: React.FC<BookFormProps> = ({ formData, setFormData }) => {
       )}
 
       <Input
-        label="タイトル"
+        label={getText('labelTitle')}
         value={formData.title}
         onChange={(value) => setFormData({ ...formData, title: value })}
         required
@@ -605,7 +599,7 @@ const BookForm: React.FC<BookFormProps> = ({ formData, setFormData }) => {
         disabled={fetchingInfo}
       />
       <Input
-        label="著者"
+        label={getText('labelAuthor')}
         value={formData.author}
         onChange={(value) => setFormData({ ...formData, author: value })}
         required
