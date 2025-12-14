@@ -2,11 +2,11 @@ import { BookInfo, LibraryError, ErrorCode } from '../models';
 
 /**
  * 書籍情報取得サービス
- * 国立国会図書館APIとopenBD APIから書籍情報を取得する
+ * 国立国会図書館APIから書籍情報と書影を取得する
  */
 export class BookInfoService {
   private readonly NDL_API_URL = 'https://iss.ndl.go.jp/api/opensearch';
-  private readonly OPENBD_API_URL = 'https://api.openbd.jp/v1/get';
+  private readonly NDL_THUMBNAIL_URL = 'https://ndlsearch.ndl.go.jp/thumbnail';
   private readonly TIMEOUT_MS = 5000;
 
   /**
@@ -30,15 +30,10 @@ export class BookInfoService {
       // XMLパース
       const bookInfo = this.parseNDLResponse(response, cleanISBN);
 
-      // openBD APIから書影を取得（エラーが出ても続行）
-      try {
-        const coverImageUrl = await this.fetchCoverImage(cleanISBN);
-        if (coverImageUrl) {
-          bookInfo.coverImageUrl = coverImageUrl;
-        }
-      } catch (error) {
-        console.warn('書影の取得に失敗しました:', error);
-        // 書影取得失敗は致命的エラーではないので続行
+      // 国立国会図書館書影APIから書影URLを取得
+      const coverImageUrl = this.fetchCoverImage(cleanISBN);
+      if (coverImageUrl) {
+        bookInfo.coverImageUrl = coverImageUrl;
       }
 
       console.log(`書籍情報を取得しました: ${bookInfo.title}`);
@@ -67,38 +62,26 @@ export class BookInfoService {
   }
 
   /**
-   * openBD APIから書影URLを取得
-   * @param isbn ISBN番号（正規化済み）
-   * @returns 書影URL（取得できない場合はundefined）
+   * 国立国会図書館書影APIから書影URLを取得
+   * @param isbn ISBN番号（正規化済み、13桁）
+   * @returns 書影URL（常にURLを返す。画像が存在しない場合は404となる）
    */
-  private async fetchCoverImage(isbn: string): Promise<string | undefined> {
+  private fetchCoverImage(isbn: string): string | undefined {
     try {
-      const response = await this.fetchWithTimeout(
-        `${this.OPENBD_API_URL}?isbn=${isbn}`,
-        this.TIMEOUT_MS
-      );
-
-      // JSONパース
-      const data = JSON.parse(response);
-
-      // openBD APIは配列を返す
-      if (!Array.isArray(data) || data.length === 0 || !data[0]) {
+      // 国立国会図書館書影APIは13桁のISBNが必要
+      if (isbn.length !== 13) {
+        console.warn('書影取得にはISBN-13が必要です');
         return undefined;
       }
 
-      const bookData = data[0];
+      // 国立国会図書館書影API
+      // https://ndlsearch.ndl.go.jp/thumbnail/[ISBN].jpg
+      const coverUrl = `${this.NDL_THUMBNAIL_URL}/${isbn}.jpg`;
 
-      // 書影URLを取得（summary.cover が最も一般的）
-      const coverUrl = bookData?.summary?.cover;
-
-      if (coverUrl && typeof coverUrl === 'string') {
-        console.log(`書影URLを取得しました: ${coverUrl}`);
-        return coverUrl;
-      }
-
-      return undefined;
+      console.log(`書影URLを生成しました: ${coverUrl}`);
+      return coverUrl;
     } catch (error) {
-      console.warn('openBD APIからの書影取得に失敗:', error);
+      console.warn('書影URLの生成に失敗:', error);
       return undefined;
     }
   }
