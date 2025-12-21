@@ -9,7 +9,8 @@ import { EmployeeRepository } from '../repositories/EmployeeRepository';
  * 書籍の貸出・返却のビジネスロジックを提供
  */
 export class LoanService {
-  private readonly MAX_LOANS_PER_EMPLOYEE = 3;
+  private readonly MAX_LOANS_PER_EMPLOYEE = 10; // 1人あたりの貸出上限冊数
+  private readonly LOAN_PERIOD_DAYS = 14; // 貸出期間（日数）
 
   constructor(
     private loanRepository: LoanRepository,
@@ -59,12 +60,18 @@ export class LoanService {
       );
     }
 
+    // 返却期限を計算（貸出日から14日後）
+    const borrowedAt = new Date();
+    const dueDate = new Date(borrowedAt);
+    dueDate.setDate(dueDate.getDate() + this.LOAN_PERIOD_DAYS);
+
     // 貸出記録を作成
     const loanRecord: LoanRecord = {
       id: uuidv4(),
       bookId,
       employeeId,
-      borrowedAt: new Date(),
+      borrowedAt,
+      dueDate,
       status: LoanStatus.ACTIVE,
     };
 

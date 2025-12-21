@@ -8,6 +8,7 @@ export interface LoanRecord {
   bookId: string;
   employeeId: string;
   borrowedAt: Date;
+  dueDate: Date; // 返却期限
   returnedAt?: Date;
   status: LoanStatus;
 }

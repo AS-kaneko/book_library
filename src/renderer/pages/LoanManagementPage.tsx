@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Book } from '../../models/Book';
 import { Employee } from '../../models/Employee';
 import { LoanRecord } from '../../models/LoanRecord';
-import { Button, Input, Table, useToast, RubyText } from '../components';
+import { Button, Input, Table, useToast, RubyText, LoanConfirmModal, ReturnConfirmModal, SuccessModal } from '../components';
 import { useAppText } from '../utils/textResource';
+import { useMode } from '../contexts/ModeContext';
 
 const { ipcRenderer } = window.require('electron');
 
@@ -28,8 +29,16 @@ const LoanManagementPage: React.FC = () => {
   const [returnBook, setReturnBook] = useState<Book | null>(null);
   const [returnLoanInfo, setReturnLoanInfo] = useState<LoanRecord | null>(null);
 
-  const { showSuccess, showError } = useToast();
+  // モーダル状態
+  const [showLoanConfirm, setShowLoanConfirm] = useState(false);
+  const [showReturnConfirm, setShowReturnConfirm] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successType, setSuccessType] = useState<'loan' | 'return'>('loan');
+  const [successBookTitle, setSuccessBookTitle] = useState('');
+
+  const { showError } = useToast();
   const { getText } = useAppText();
+  const { isKidsMode } = useMode();
 
   // Refs for auto-focus
   const employeeBarcodeRef = useRef<HTMLInputElement>(null);
@@ -129,30 +138,48 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // 貸出処理
-  const handleBorrow = async () => {
+  // 貸出確認ボタンクリック
+  const handleBorrowClick = () => {
     if (!selectedEmployee || !selectedBook) {
       showError(getText('errorValidation'));
       return;
     }
+    setShowLoanConfirm(true);
+  };
+
+  // 貸出処理
+  const handleBorrowConfirm = async () => {
+    setShowLoanConfirm(false);
 
     try {
       setLoading(true);
       await ipcRenderer.invoke('loans:borrowByBarcodes', bookISBN, employeeBarcode);
-      showSuccess(getText('successBorrow'));
+
+      // 成功モーダルを表示
+      setSuccessType('loan');
+      setSuccessBookTitle(selectedBook?.title || '');
+      setShowSuccess(true);
 
       // フォームをリセット
       resetBorrowForm();
 
       // 貸出一覧を更新
       await loadActiveLoans();
-
-      // 最初のフィールドにフォーカス
-      employeeBarcodeRef.current?.focus();
     } catch (error: any) {
       showError(error.message || getText('errorBorrow'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 成功モーダル閉じた後の処理
+  const handleSuccessClose = () => {
+    setShowSuccess(false);
+    // 最初のフィールドにフォーカス
+    if (successType === 'loan') {
+      employeeBarcodeRef.current?.focus();
+    } else {
+      returnISBNRef.current?.focus();
     }
   };
 
@@ -193,26 +220,33 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // 返却処理
-  const handleReturn = async () => {
-    if (!returnBook) {
+  // 返却確認ボタンクリック
+  const handleReturnClick = () => {
+    if (!returnBook || !returnLoanInfo) {
       showError(getText('errorValidation'));
       return;
     }
+    setShowReturnConfirm(true);
+  };
+
+  // 返却処理
+  const handleReturnConfirm = async () => {
+    setShowReturnConfirm(false);
 
     try {
       setLoading(true);
       await ipcRenderer.invoke('loans:returnByISBN', returnISBN);
-      showSuccess(getText('successReturn'));
+
+      // 成功モーダルを表示
+      setSuccessType('return');
+      setSuccessBookTitle(returnBook?.title || '');
+      setShowSuccess(true);
 
       // フォームをリセット
       resetReturnForm();
 
       // 貸出一覧を更新
       await loadActiveLoans();
-
-      // 返却フィールドにフォーカス
-      returnISBNRef.current?.focus();
     } catch (error: any) {
       showError(error.message || getText('errorReturn'));
     } finally {
@@ -248,6 +282,16 @@ const LoanManagementPage: React.FC = () => {
       accessor: ((loan: ActiveLoanWithDetails) => {
         const date = new Date(loan.borrowedAt);
         return date.toLocaleDateString('ja-JP');
+      }) as any,
+    },
+    {
+      header: '返却期限',
+      accessor: ((loan: ActiveLoanWithDetails) => {
+        if (loan.dueDate) {
+          const dueDate = new Date(loan.dueDate);
+          return dueDate.toLocaleDateString('ja-JP');
+        }
+        return '-';
       }) as any,
     },
     {
@@ -305,7 +349,7 @@ const LoanManagementPage: React.FC = () => {
                   <RubyText>{getText('employeeInfo')}</RubyText>: {selectedEmployee.id}
                 </p>
                 <p className="text-xs text-blue-700">
-                  <RubyText>{getText('loanCount')}</RubyText>: {employeeLoanCount} / 3 冊
+                  <RubyText>{getText('loanCount')}</RubyText>: {employeeLoanCount} / 10 冊
                 </p>
               </div>
             )}
@@ -344,7 +388,7 @@ const LoanManagementPage: React.FC = () => {
             )}
 
             <Button
-              onClick={handleBorrow}
+              onClick={handleBorrowClick}
               disabled={!selectedEmployee || !selectedBook || loading}
               className="w-full"
             >
@@ -415,7 +459,7 @@ const LoanManagementPage: React.FC = () => {
             )}
 
             <Button
-              onClick={handleReturn}
+              onClick={handleReturnClick}
               disabled={!returnBook || !returnLoanInfo || loading}
               className="w-full"
               variant="success"
@@ -451,6 +495,37 @@ const LoanManagementPage: React.FC = () => {
           />
         )}
       </div>
+
+      {/* 貸出確認モーダル */}
+      <LoanConfirmModal
+        isOpen={showLoanConfirm}
+        onClose={() => setShowLoanConfirm(false)}
+        onConfirm={handleBorrowConfirm}
+        book={selectedBook}
+        employee={selectedEmployee}
+        dueDate={selectedBook ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : undefined}
+        isKidsMode={isKidsMode}
+      />
+
+      {/* 返却確認モーダル */}
+      <ReturnConfirmModal
+        isOpen={showReturnConfirm}
+        onClose={() => setShowReturnConfirm(false)}
+        onConfirm={handleReturnConfirm}
+        book={returnBook}
+        borrowerName={(returnLoanInfo as any)?.employeeName}
+        borrowedDate={returnLoanInfo?.borrowedAt}
+        isKidsMode={isKidsMode}
+      />
+
+      {/* 成功モーダル */}
+      <SuccessModal
+        isOpen={showSuccess}
+        onClose={handleSuccessClose}
+        type={successType}
+        bookTitle={successBookTitle}
+        isKidsMode={isKidsMode}
+      />
     </div>
   );
 };
