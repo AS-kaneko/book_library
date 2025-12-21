@@ -16,8 +16,11 @@ export class BookInfoService {
    */
   async fetchBookInfo(isbn: string): Promise<BookInfo> {
     try {
-      // ISBN正規化（ハイフン除去）
-      const cleanISBN = isbn.replace(/[-\s]/g, '');
+      // ISBN正規化（全角→半角変換、ハイフン・スペース除去）
+      const halfWidthISBN = isbn.replace(/[０-９]/g, (s) =>
+        String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+      );
+      const cleanISBN = halfWidthISBN.replace(/[-\s]/g, '');
 
       console.log(`書籍情報を取得中: ISBN=${cleanISBN}`);
 

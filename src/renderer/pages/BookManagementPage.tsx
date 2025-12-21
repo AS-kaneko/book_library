@@ -540,7 +540,13 @@ const BookForm: React.FC<BookFormProps> = ({ formData, setFormData }) => {
         ref={isbnInputRef}
         label={getText('labelIsbn')}
         value={formData.isbn}
-        onChange={(value) => setFormData({ ...formData, isbn: value })}
+        onChange={(value) => {
+          // 全角文字を半角に変換
+          const halfWidthValue = value.replace(/[０-９]/g, (s) =>
+            String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
+          );
+          setFormData({ ...formData, isbn: halfWidthValue });
+        }}
         onKeyDown={handleISBNKeyDown}
         placeholder={getText('labelIsbn')}
         required
