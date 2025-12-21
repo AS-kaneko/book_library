@@ -2,7 +2,7 @@
 
 ## 概要
 
-このドキュメントでは、社内図書管理システムのビルドとパッケージング手順を説明します。
+このドキュメントでは、図書管理システムのビルドとパッケージング手順を説明します。
 
 ## 前提条件
 
@@ -39,14 +39,14 @@ npm run electron:build
 ```bash
 npm run electron:build:mac
 ```
-- 生成物: `release/社内図書管理システム-{version}.dmg`
+- 生成物: `release/図書管理システム-{version}.dmg`
 - 対応アーキテクチャ: x64, arm64 (Apple Silicon)
 
 #### Windows向け
 ```bash
 npm run electron:build:win
 ```
-- 生成物: `release/社内図書管理システム Setup {version}.exe`
+- 生成物: `release/図書管理システム Setup {version}.exe`
 - 対応アーキテクチャ: x64
 - インストーラー形式: NSIS
 
@@ -55,7 +55,7 @@ npm run electron:build:win
 npm run electron:build:linux
 ```
 - 生成物:
-  - `release/社内図書管理システム-{version}.AppImage`
+  - `release/図書管理システム-{version}.AppImage`
   - `release/library-management-system_{version}_amd64.deb`
 
 #### パッケージングテスト（インストーラー作成なし）
@@ -85,7 +85,7 @@ npm run pack
 ### 主要な設定項目
 
 - **appId**: `com.company.library-management`
-- **productName**: 社内図書管理システム
+- **productName**: 図書管理システム
 - **出力ディレクトリ**: `release/`
 - **ビルドリソース**: `build/`
 

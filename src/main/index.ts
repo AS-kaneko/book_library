@@ -421,7 +421,7 @@ function createWindow() {
     height: 800,
     minWidth: 1024,
     minHeight: 768,
-    title: '社内図書管理システム',
+    title: '図書管理システム',
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,

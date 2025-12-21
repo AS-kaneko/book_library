@@ -1,6 +1,6 @@
-# 社内図書管理システム
+# 図書管理システム
 
-Electron + React + TypeScript + Vite で構築された社内図書管理システムです。
+Electron + React + TypeScript + Vite で構築された図書管理システムです。
 
 ## 機能
 

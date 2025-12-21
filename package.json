@@ -1,7 +1,7 @@
 {
   "name": "library-management-system",
   "version": "1.0.0",
-  "description": "社内図書管理システム",
+  "description": "図書管理システム",
   "main": "dist-electron/index.js",
   "scripts": {
     "dev": "vite",
@@ -50,7 +50,7 @@
   },
   "build": {
     "appId": "com.company.library-management",
-    "productName": "社内図書管理システム",
+    "productName": "図書管理システム",
     "copyright": "Copyright © 2024",
     "directories": {
       "output": "release",
@@ -92,7 +92,7 @@
           "path": "/Applications"
         }
       ],
-      "title": "社内図書管理システム ${version}"
+      "title": "図書管理システム ${version}"
     },
     "win": {
       "target": [
@@ -113,7 +113,7 @@
       "installerHeaderIcon": "build/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "社内図書管理システム"
+      "shortcutName": "図書管理システム"
     },
     "linux": {
       "target": [

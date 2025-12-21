@@ -14,7 +14,7 @@ console.log('   ✓ 空のJSONファイル作成（books.json, employees.json, l
 
 console.log('2. ウィンドウ作成と管理');
 console.log('   ✓ BrowserWindowの作成（1280x800、最小1024x768）');
-console.log('   ✓ タイトル設定: 社内図書管理システム');
+console.log('   ✓ タイトル設定: 図書管理システム');
 console.log('   ✓ 開発モード: Vite dev serverからロード + DevTools');
 console.log('   ✓ 本番モード: ビルド済みファイルからロード');
 console.log('   ✓ ウィンドウクローズ処理');
