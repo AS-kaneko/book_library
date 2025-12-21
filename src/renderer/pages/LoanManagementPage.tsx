@@ -108,14 +108,7 @@ const LoanManagementPage: React.FC = () => {
     try {
       // 全角数字を半角に変換
       const normalizedBarcode = toHalfWidth(barcode.trim());
-      console.log('社員バーコード検索:', {
-        original: barcode,
-        normalized: normalizedBarcode,
-        originalLength: barcode.length,
-        normalizedLength: normalizedBarcode.length
-      });
       const employee = await ipcRenderer.invoke('employees:getByBarcode', normalizedBarcode);
-      console.log('検索結果:', employee);
       setSelectedEmployee(employee);
 
       // 貸出冊数を取得

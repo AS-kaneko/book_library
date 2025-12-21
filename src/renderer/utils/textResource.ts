@@ -137,13 +137,13 @@ export type TextKey =
     ;
 
 const resources: Record<TextKey, { normal: string; kids: string }> = {
-    appTitle: { normal: '社内図書管理システム', kids: 'としょかん システム' },
+    appTitle: { normal: '図書貸出システム', kids: 'としょかん システム' },
     menuBooks: { normal: '書籍管理', kids: 'ほんを さがす' },
     menuEmployees: { normal: '社員管理', kids: 'おともだち' },
     menuLoans: { normal: '貸出・返却', kids: 'かりる・かえす' },
     menuHistory: { normal: '履歴', kids: 'りれき' },
     skipToMain: { normal: 'メインコンテンツへスキップ', kids: 'なかみへ ジャンプ' },
-    footerCopy: { normal: '© 2024 社内図書管理システム', kids: '© 2024 としょかん システム' },
+    footerCopy: { normal: '© 2024 図書貸出システム', kids: '© 2024 としょかん システム' },
     modeToggleNormal: { normal: '通常モード', kids: 'おとな' },
     modeToggleKids: { normal: 'キッズモード', kids: 'こども' },
 

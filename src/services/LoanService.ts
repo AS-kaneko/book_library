@@ -45,6 +45,13 @@ export class LoanService {
 
     // 書籍が貸出可能かチェック
     if (book.status === BookStatus.BORROWED) {
+      // 同じ社員が借りようとしている場合は専用メッセージ
+      if (book.currentBorrowerId === employeeId) {
+        throw new LibraryError(
+          'この書籍は既にあなたが借りています',
+          ErrorCode.BOOK_ALREADY_BORROWED
+        );
+      }
       throw new LibraryError(
         'この書籍は既に貸出中です',
         ErrorCode.BOOK_ALREADY_BORROWED
