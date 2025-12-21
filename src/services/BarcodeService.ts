@@ -30,14 +30,16 @@ export class BarcodeService {
    */
   async generateEmployeeBarcode(employeeId: string): Promise<string> {
     try {
-      // CODE128形式でバーコード画像を生成
+      // Code39形式でバーコード画像を生成（広く対応されている形式）
       const png = await bwipjs.toBuffer({
-        bcid: 'code128',       // バーコードタイプ
+        bcid: 'code39',        // バーコードタイプ（Code39は多くのリーダーで対応）
         text: employeeId,       // エンコードするテキスト
-        scale: 3,               // スケール係数
-        height: 10,             // バーの高さ（ミリメートル）
+        scale: 5,               // スケール係数（大きくして読み取りやすく）
+        height: 15,             // バーの高さ（ミリメートル）
         includetext: true,      // テキストを含める
         textxalign: 'center',   // テキストの水平配置
+        backgroundcolor: 'ffffff', // 背景色（白）
+        barcolor: '000000',     // バーの色（黒）
       });
 
       // ファイル名とパスを生成

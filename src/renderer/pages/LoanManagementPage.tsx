@@ -49,6 +49,13 @@ const LoanManagementPage: React.FC = () => {
     loadActiveLoans();
   }, []);
 
+  // 全角数字を半角数字に変換
+  const toHalfWidth = (str: string): string => {
+    return str.replace(/[０-９]/g, (s) => {
+      return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+    });
+  };
+
   const loadActiveLoans = async () => {
     try {
       setLoading(true);
@@ -83,7 +90,7 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // 社員バーコードスキャン・入力処理
+  // 社員バーコードスキャン・入力処理（Enterキー時に自動検索）
   const handleEmployeeBarcodeKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && employeeBarcode) {
       e.preventDefault();
@@ -99,7 +106,16 @@ const LoanManagementPage: React.FC = () => {
       return;
     }
     try {
-      const employee = await ipcRenderer.invoke('employees:getByBarcode', barcode.trim());
+      // 全角数字を半角に変換
+      const normalizedBarcode = toHalfWidth(barcode.trim());
+      console.log('社員バーコード検索:', {
+        original: barcode,
+        normalized: normalizedBarcode,
+        originalLength: barcode.length,
+        normalizedLength: normalizedBarcode.length
+      });
+      const employee = await ipcRenderer.invoke('employees:getByBarcode', normalizedBarcode);
+      console.log('検索結果:', employee);
       setSelectedEmployee(employee);
 
       // 貸出冊数を取得
@@ -115,7 +131,7 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // 書籍ISBNスキャン・入力処理
+  // 書籍ISBNスキャン・入力処理（Enterキー時に自動検索）
   const handleBookISBNKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && bookISBN) {
       e.preventDefault();
@@ -130,7 +146,9 @@ const LoanManagementPage: React.FC = () => {
       return;
     }
     try {
-      const book = await ipcRenderer.invoke('books:getByISBN', isbn.trim());
+      // 全角数字を半角に変換
+      const normalizedISBN = toHalfWidth(isbn.trim());
+      const book = await ipcRenderer.invoke('books:getByISBN', normalizedISBN);
       setSelectedBook(book);
     } catch (error: any) {
       showError(error.message || getText('errorNotFound'));
@@ -183,7 +201,7 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // 返却ISBNスキャン・入力処理
+  // 返却ISBNスキャン・入力処理（Enterキー時に自動検索）
   const handleReturnISBNKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && returnISBN) {
       e.preventDefault();
@@ -199,7 +217,9 @@ const LoanManagementPage: React.FC = () => {
       return;
     }
     try {
-      const book = await ipcRenderer.invoke('books:getByISBN', isbn.trim());
+      // 全角数字を半角に変換
+      const normalizedISBN = toHalfWidth(isbn.trim());
+      const book = await ipcRenderer.invoke('books:getByISBN', normalizedISBN);
       setReturnBook(book);
 
       // 貸出情報を取得

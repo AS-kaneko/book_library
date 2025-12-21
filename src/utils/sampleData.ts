@@ -58,24 +58,24 @@ export function generateSampleBooks(): Book[] {
 export function generateSampleEmployees(): Employee[] {
   return [
     {
-      id: 'EMP001',
+      id: '100001',
       name: '山田太郎',
       email: 'yamada@company.com',
-      barcode: 'EMP001',
+      barcode: '100001',
       registeredAt: new Date(),
     },
     {
-      id: 'EMP002',
+      id: '100002',
       name: '佐藤花子',
       email: 'sato@company.com',
-      barcode: 'EMP002',
+      barcode: '100002',
       registeredAt: new Date(),
     },
     {
-      id: 'EMP003',
+      id: '100003',
       name: '田中一郎',
       email: 'tanaka@company.com',
-      barcode: 'EMP003',
+      barcode: '100003',
       registeredAt: new Date(),
     },
   ];
