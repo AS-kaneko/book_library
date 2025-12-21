@@ -36,7 +36,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 2. **Service層** (`src/services/`) - ビジネスロジック
    - BookService: 書籍管理（追加、更新、削除、検索）
    - EmployeeService: 社員管理（追加、更新、削除、バーコード生成）
-   - LoanService: 貸出管理（貸出、返却、履歴管理）
+   - LoanService: 貸出管理（貸出、返却、履歴管理、期間変更、手動貸出作成）
+     - 複数冊の一括貸出・返却に対応
+     - 返却期限の延長・短縮機能
+     - 管理画面からの手動貸出作成
    - BarcodeService: バーコード生成・検証（bwip-js使用）
 
 3. **IPC通信** (`src/main/index.ts`) - Electronメインプロセス
@@ -79,3 +82,26 @@ JSON Files (data/)
 - ToastContextでグローバル通知管理
 - Tailwind CSSでスタイリング
 - 再利用可能なコンポーネント: Button, Input, Modal, Table, Layout
+- 専用モーダルコンポーネント:
+  - LoanConfirmModal: 貸出確認（複数冊対応）
+  - ReturnConfirmModal: 返却確認（複数冊対応）
+  - SuccessModal: 貸出・返却完了通知
+
+### 貸出・返却機能の特徴
+
+#### 複数冊対応
+- 一回の操作で複数の書籍を貸出・返却可能
+- バーコードを連続スキャンしてリストに追加
+- 重複チェック機能あり
+- リストから個別に削除可能
+
+#### 管理画面機能（履歴ページ）
+- **新規貸出作成**: バーコードなしで書籍と社員を選択して貸出作成
+- **期間変更**: 返却期限の延長・短縮（日数指定または日付指定）
+- **強制返却**: バーコードスキャンなしで返却処理
+- **延滞表示**: 返却期限超過の貸出を赤字で表示
+
+#### 確認モーダル
+- 貸出時: 書籍リスト、借りる人、返却期限を表示
+- 返却時: 書籍リスト、借りた人、貸出日を表示
+- 子供モード対応（大きめのフォント、ふりがな付き）
