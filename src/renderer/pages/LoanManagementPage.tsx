@@ -21,13 +21,13 @@ const LoanManagementPage: React.FC = () => {
   const [employeeBarcode, setEmployeeBarcode] = useState('');
   const [bookISBN, setBookISBN] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [selectedBooks, setSelectedBooks] = useState<Book[]>([]);
   const [employeeLoanCount, setEmployeeLoanCount] = useState(0);
 
   // 返却フォーム
   const [returnISBN, setReturnISBN] = useState('');
-  const [returnBook, setReturnBook] = useState<Book | null>(null);
-  const [returnLoanInfo, setReturnLoanInfo] = useState<LoanRecord | null>(null);
+  const [returnBooks, setReturnBooks] = useState<Book[]>([]);
+  const [returnLoanInfos, setReturnLoanInfos] = useState<Map<string, LoanRecord>>(new Map());
 
   // モーダル状態
   const [showLoanConfirm, setShowLoanConfirm] = useState(false);
@@ -132,26 +132,42 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // ISBNで書籍を検索
+  // ISBNで書籍を検索して追加
   const searchBookByISBN = async (isbn: string) => {
     if (!isbn.trim()) {
-      setSelectedBook(null);
       return;
     }
     try {
       // 全角数字を半角に変換
       const normalizedISBN = toHalfWidth(isbn.trim());
       const book = await ipcRenderer.invoke('books:getByISBN', normalizedISBN);
-      setSelectedBook(book);
+
+      // 重複チェック
+      const isDuplicate = selectedBooks.some(b => b.id === book.id);
+      if (isDuplicate) {
+        showError('この書籍は既に追加されています');
+        setBookISBN('');
+        bookISBNRef.current?.focus();
+        return;
+      }
+
+      // リストに追加
+      setSelectedBooks([...selectedBooks, book]);
+      setBookISBN('');
+      bookISBNRef.current?.focus();
     } catch (error: any) {
       showError(error.message || getText('errorNotFound'));
-      setSelectedBook(null);
     }
+  };
+
+  // 書籍をリストから削除
+  const removeBook = (bookId: string) => {
+    setSelectedBooks(selectedBooks.filter(b => b.id !== bookId));
   };
 
   // 貸出確認ボタンクリック
   const handleBorrowClick = () => {
-    if (!selectedEmployee || !selectedBook) {
+    if (!selectedEmployee || selectedBooks.length === 0) {
       showError(getText('errorValidation'));
       return;
     }
@@ -164,11 +180,16 @@ const LoanManagementPage: React.FC = () => {
 
     try {
       setLoading(true);
-      await ipcRenderer.invoke('loans:borrowByBarcodes', bookISBN, employeeBarcode);
+
+      // 複数冊の貸出処理
+      const bookISBNs = selectedBooks.map(book => book.isbn);
+      await ipcRenderer.invoke('loans:borrowMultipleBooks', employeeBarcode, bookISBNs);
 
       // 成功モーダルを表示
       setSuccessType('loan');
-      setSuccessBookTitle(selectedBook?.title || '');
+      setSuccessBookTitle(selectedBooks.length === 1
+        ? selectedBooks[0].title
+        : `${selectedBooks.length}冊の書籍`);
       setShowSuccess(true);
 
       // フォームをリセット
@@ -202,18 +223,24 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // 返却書籍をISBNで検索
+  // 返却書籍をISBNで検索して追加
   const searchReturnBookByISBN = async (isbn: string) => {
     if (!isbn.trim()) {
-      setReturnBook(null);
-      setReturnLoanInfo(null);
       return;
     }
     try {
       // 全角数字を半角に変換
       const normalizedISBN = toHalfWidth(isbn.trim());
       const book = await ipcRenderer.invoke('books:getByISBN', normalizedISBN);
-      setReturnBook(book);
+
+      // 重複チェック
+      const isDuplicate = returnBooks.some(b => b.id === book.id);
+      if (isDuplicate) {
+        showError('この書籍は既に追加されています');
+        setReturnISBN('');
+        returnISBNRef.current?.focus();
+        return;
+      }
 
       // 貸出情報を取得
       const loans = await ipcRenderer.invoke('loans:getHistory', book.id);
@@ -221,21 +248,32 @@ const LoanManagementPage: React.FC = () => {
 
       if (activeLoan) {
         const employee = await ipcRenderer.invoke('employees:getById', activeLoan.employeeId);
-        setReturnLoanInfo({ ...activeLoan, employeeName: employee?.name });
+        const loanInfo = { ...activeLoan, employeeName: employee?.name };
+
+        // リストに追加
+        setReturnBooks([...returnBooks, book]);
+        setReturnLoanInfos(new Map(returnLoanInfos.set(book.id, loanInfo)));
+        setReturnISBN('');
+        returnISBNRef.current?.focus();
       } else {
-        setReturnLoanInfo(null);
-        showError(getText('errorNotFound'));
+        showError('この書籍は貸出中ではありません');
       }
     } catch (error: any) {
       showError(error.message || getText('errorNotFound'));
-      setReturnBook(null);
-      setReturnLoanInfo(null);
     }
+  };
+
+  // 返却書籍をリストから削除
+  const removeReturnBook = (bookId: string) => {
+    setReturnBooks(returnBooks.filter(b => b.id !== bookId));
+    const newMap = new Map(returnLoanInfos);
+    newMap.delete(bookId);
+    setReturnLoanInfos(newMap);
   };
 
   // 返却確認ボタンクリック
   const handleReturnClick = () => {
-    if (!returnBook || !returnLoanInfo) {
+    if (returnBooks.length === 0) {
       showError(getText('errorValidation'));
       return;
     }
@@ -248,11 +286,16 @@ const LoanManagementPage: React.FC = () => {
 
     try {
       setLoading(true);
-      await ipcRenderer.invoke('loans:returnByISBN', returnISBN);
+
+      // 複数冊の返却処理
+      const bookISBNs = returnBooks.map(book => book.isbn);
+      await ipcRenderer.invoke('loans:returnMultipleBooks', bookISBNs);
 
       // 成功モーダルを表示
       setSuccessType('return');
-      setSuccessBookTitle(returnBook?.title || '');
+      setSuccessBookTitle(returnBooks.length === 1
+        ? returnBooks[0].title
+        : `${returnBooks.length}冊の書籍`);
       setShowSuccess(true);
 
       // フォームをリセット
@@ -271,14 +314,14 @@ const LoanManagementPage: React.FC = () => {
     setEmployeeBarcode('');
     setBookISBN('');
     setSelectedEmployee(null);
-    setSelectedBook(null);
+    setSelectedBooks([]);
     setEmployeeLoanCount(0);
   };
 
   const resetReturnForm = () => {
     setReturnISBN('');
-    setReturnBook(null);
-    setReturnLoanInfo(null);
+    setReturnBooks([]);
+    setReturnLoanInfos(new Map());
   };
 
   const columns = [
@@ -386,29 +429,46 @@ const LoanManagementPage: React.FC = () => {
               </Button>
             </div>
 
-            {selectedBook && (
-              <div className="bg-green-50 p-4 rounded border border-green-200">
-                <p className="text-sm font-semibold text-green-900">
-                  {selectedBook.title}
+            {selectedBooks.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-gray-700">
+                  選択した書籍 ({selectedBooks.length}冊)
                 </p>
-                <p className="text-xs text-green-700">
-                  <RubyText>{getText('labelAuthor')}</RubyText>: {selectedBook.author}
-                </p>
-                <p className="text-xs text-green-700">
-                  <RubyText>{getText('labelIsbn')}</RubyText>: {selectedBook.isbn}
-                </p>
+                {selectedBooks.map((book) => (
+                  <div key={book.id} className="bg-green-50 p-3 rounded border border-green-200 flex justify-between items-start">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-green-900">
+                        {book.title}
+                      </p>
+                      <p className="text-xs text-green-700">
+                        <RubyText>{getText('labelAuthor')}</RubyText>: {book.author}
+                      </p>
+                      <p className="text-xs text-green-700">
+                        <RubyText>{getText('labelIsbn')}</RubyText>: {book.isbn}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => removeBook(book.id)}
+                      className="ml-2 text-red-600 hover:text-red-800 font-bold text-lg"
+                      title="削除"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
             <Button
               onClick={handleBorrowClick}
-              disabled={!selectedEmployee || !selectedBook || loading}
+              disabled={!selectedEmployee || selectedBooks.length === 0 || loading}
               className="w-full"
             >
               {getText('btnLend')}
+              {selectedBooks.length > 0 && ` (${selectedBooks.length}冊)`}
             </Button>
 
-            {selectedEmployee || selectedBook ? (
+            {(selectedEmployee || selectedBooks.length > 0) ? (
               <Button
                 variant="secondary"
                 onClick={resetBorrowForm}
@@ -446,41 +506,62 @@ const LoanManagementPage: React.FC = () => {
               </Button>
             </div>
 
-            {returnBook && (
-              <div className="bg-yellow-50 p-4 rounded border border-yellow-200">
-                <p className="text-sm font-semibold text-yellow-900">
-                  {returnBook.title}
+            {returnBooks.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-gray-700">
+                  選択した書籍 ({returnBooks.length}冊)
                 </p>
-                <p className="text-xs text-yellow-700">
-                  <RubyText>{getText('labelAuthor')}</RubyText>: {returnBook.author}
-                </p>
-                <p className="text-xs text-yellow-700">
-                  <RubyText>{getText('labelIsbn')}</RubyText>: {returnBook.isbn}
-                </p>
-              </div>
-            )}
-
-            {returnLoanInfo && (
-              <div className="bg-gray-50 p-4 rounded border border-gray-200">
-                <p className="text-sm font-semibold text-gray-900">
-                  <RubyText>{getText('colBorrower')}</RubyText>: {(returnLoanInfo as any).employeeName}
-                </p>
-                <p className="text-xs text-gray-700">
-                  <RubyText>{getText('colBorrowDate')}</RubyText>: {new Date(returnLoanInfo.borrowedAt).toLocaleDateString('ja-JP')}
-                </p>
+                {returnBooks.map((book) => {
+                  const loanInfo = returnLoanInfos.get(book.id);
+                  return (
+                    <div key={book.id} className="bg-yellow-50 p-3 rounded border border-yellow-200">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-yellow-900">
+                            {book.title}
+                          </p>
+                          <p className="text-xs text-yellow-700">
+                            <RubyText>{getText('labelAuthor')}</RubyText>: {book.author}
+                          </p>
+                          <p className="text-xs text-yellow-700">
+                            <RubyText>{getText('labelIsbn')}</RubyText>: {book.isbn}
+                          </p>
+                          {loanInfo && (
+                            <div className="mt-2 pt-2 border-t border-yellow-300">
+                              <p className="text-xs text-yellow-800">
+                                <RubyText>{getText('colBorrower')}</RubyText>: {(loanInfo as any).employeeName}
+                              </p>
+                              <p className="text-xs text-yellow-800">
+                                <RubyText>{getText('colBorrowDate')}</RubyText>: {new Date(loanInfo.borrowedAt).toLocaleDateString('ja-JP')}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeReturnBook(book.id)}
+                          className="ml-2 text-red-600 hover:text-red-800 font-bold text-lg"
+                          title="削除"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             <Button
               onClick={handleReturnClick}
-              disabled={!returnBook || !returnLoanInfo || loading}
+              disabled={returnBooks.length === 0 || loading}
               className="w-full"
               variant="success"
             >
               {getText('btnReturn')}
+              {returnBooks.length > 0 && ` (${returnBooks.length}冊)`}
             </Button>
 
-            {returnBook ? (
+            {returnBooks.length > 0 ? (
               <Button
                 variant="secondary"
                 onClick={resetReturnForm}
@@ -514,9 +595,9 @@ const LoanManagementPage: React.FC = () => {
         isOpen={showLoanConfirm}
         onClose={() => setShowLoanConfirm(false)}
         onConfirm={handleBorrowConfirm}
-        book={selectedBook}
+        books={selectedBooks}
         employee={selectedEmployee}
-        dueDate={selectedBook ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : undefined}
+        dueDate={selectedBooks.length > 0 ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) : undefined}
         isKidsMode={isKidsMode}
       />
 
@@ -525,9 +606,8 @@ const LoanManagementPage: React.FC = () => {
         isOpen={showReturnConfirm}
         onClose={() => setShowReturnConfirm(false)}
         onConfirm={handleReturnConfirm}
-        book={returnBook}
-        borrowerName={(returnLoanInfo as any)?.employeeName}
-        borrowedDate={returnLoanInfo?.borrowedAt}
+        books={returnBooks}
+        loanInfos={returnLoanInfos}
         isKidsMode={isKidsMode}
       />
 

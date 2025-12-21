@@ -9,7 +9,7 @@ interface LoanConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  book: Book | null;
+  books: Book[];
   employee: Employee | null;
   dueDate?: Date;
   isKidsMode?: boolean;
@@ -19,12 +19,12 @@ const LoanConfirmModal: React.FC<LoanConfirmModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  book,
+  books,
   employee,
   dueDate,
   isKidsMode = false,
 }) => {
-  if (!book || !employee) return null;
+  if (books.length === 0 || !employee) return null;
 
   const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString('ja-JP') : '';
 
@@ -33,12 +33,20 @@ const LoanConfirmModal: React.FC<LoanConfirmModalProps> = ({
       <div className="space-y-4">
         <div className={`p-4 rounded-lg ${isKidsMode ? 'bg-yellow-50 border-4 border-yellow-400' : 'bg-gray-50'}`}>
           <p className={`font-semibold mb-2 ${isKidsMode ? 'text-2xl text-yellow-900' : 'text-gray-900'}`}>
-            {isKidsMode ? <RubyText>ほんのなまえ</RubyText> : '書籍'}
+            {isKidsMode ? <RubyText>ほんのなまえ</RubyText> : '書籍'} ({books.length}冊)
           </p>
-          <p className={`${isKidsMode ? 'text-xl text-yellow-800' : 'text-gray-700'}`}>{book.title}</p>
-          <p className={`text-sm ${isKidsMode ? 'text-yellow-700' : 'text-gray-600'}`}>
-            {isKidsMode ? <RubyText>かいたひと</RubyText> : '著者'}: {book.author}
-          </p>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {books.map((book, index) => (
+              <div key={book.id} className={`p-2 rounded ${isKidsMode ? 'bg-yellow-100' : 'bg-white'}`}>
+                <p className={`font-semibold ${isKidsMode ? 'text-lg text-yellow-900' : 'text-sm text-gray-900'}`}>
+                  {index + 1}. {book.title}
+                </p>
+                <p className={`text-xs ${isKidsMode ? 'text-yellow-700' : 'text-gray-600'}`}>
+                  {isKidsMode ? <RubyText>かいたひと</RubyText> : '著者'}: {book.author}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className={`p-4 rounded-lg ${isKidsMode ? 'bg-blue-50 border-4 border-blue-400' : 'bg-gray-50'}`}>

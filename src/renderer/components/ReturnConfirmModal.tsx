@@ -3,14 +3,14 @@ import Modal from './Modal';
 import Button from './Button';
 import { RubyText } from './RubyText';
 import { Book } from '../../models/Book';
+import { LoanRecord } from '../../models/LoanRecord';
 
 interface ReturnConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  book: Book | null;
-  borrowerName?: string;
-  borrowedDate?: Date;
+  books: Book[];
+  loanInfos: Map<string, LoanRecord>;
   isKidsMode?: boolean;
 }
 
@@ -18,45 +18,40 @@ const ReturnConfirmModal: React.FC<ReturnConfirmModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  book,
-  borrowerName,
-  borrowedDate,
+  books,
+  loanInfos,
   isKidsMode = false,
 }) => {
-  if (!book) return null;
-
-  const borrowedDateStr = borrowedDate ? new Date(borrowedDate).toLocaleDateString('ja-JP') : '';
+  if (books.length === 0) return null;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isKidsMode ? 'へんきゃくかくにん' : '返却確認'}>
       <div className="space-y-4">
         <div className={`p-4 rounded-lg ${isKidsMode ? 'bg-yellow-50 border-4 border-yellow-400' : 'bg-gray-50'}`}>
           <p className={`font-semibold mb-2 ${isKidsMode ? 'text-2xl text-yellow-900' : 'text-gray-900'}`}>
-            {isKidsMode ? <RubyText>ほんのなまえ</RubyText> : '書籍'}
+            {isKidsMode ? <RubyText>ほんのなまえ</RubyText> : '書籍'} ({books.length}冊)
           </p>
-          <p className={`${isKidsMode ? 'text-xl text-yellow-800' : 'text-gray-700'}`}>{book.title}</p>
-          <p className={`text-sm ${isKidsMode ? 'text-yellow-700' : 'text-gray-600'}`}>
-            {isKidsMode ? <RubyText>かいたひと</RubyText> : '著者'}: {book.author}
-          </p>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {books.map((book, index) => {
+              const loanInfo = loanInfos.get(book.id);
+              return (
+                <div key={book.id} className={`p-2 rounded ${isKidsMode ? 'bg-yellow-100' : 'bg-white'}`}>
+                  <p className={`font-semibold ${isKidsMode ? 'text-lg text-yellow-900' : 'text-sm text-gray-900'}`}>
+                    {index + 1}. {book.title}
+                  </p>
+                  <p className={`text-xs ${isKidsMode ? 'text-yellow-700' : 'text-gray-600'}`}>
+                    {isKidsMode ? <RubyText>かいたひと</RubyText> : '著者'}: {book.author}
+                  </p>
+                  {loanInfo && (
+                    <p className={`text-xs ${isKidsMode ? 'text-yellow-700' : 'text-gray-600'}`}>
+                      {isKidsMode ? <RubyText>かりたひと</RubyText> : '借りた人'}: {(loanInfo as any).employeeName}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-
-        {borrowerName && (
-          <div className={`p-4 rounded-lg ${isKidsMode ? 'bg-blue-50 border-4 border-blue-400' : 'bg-gray-50'}`}>
-            <p className={`font-semibold mb-2 ${isKidsMode ? 'text-2xl text-blue-900' : 'text-gray-900'}`}>
-              {isKidsMode ? <RubyText>かりたひと</RubyText> : '借りた人'}
-            </p>
-            <p className={`${isKidsMode ? 'text-xl text-blue-800' : 'text-gray-700'}`}>{borrowerName}</p>
-          </div>
-        )}
-
-        {borrowedDate && (
-          <div className={`p-4 rounded-lg ${isKidsMode ? 'bg-purple-50 border-4 border-purple-400' : 'bg-gray-50'}`}>
-            <p className={`font-semibold mb-2 ${isKidsMode ? 'text-2xl text-purple-900' : 'text-gray-900'}`}>
-              {isKidsMode ? <RubyText>かりたひ</RubyText> : '貸出日'}
-            </p>
-            <p className={`${isKidsMode ? 'text-xl text-purple-800' : 'text-gray-700'}`}>{borrowedDateStr}</p>
-          </div>
-        )}
 
         <div className="flex gap-3 mt-6">
           <Button

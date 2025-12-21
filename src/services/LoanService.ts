@@ -239,4 +239,92 @@ export class LoanService {
 
     return await this.borrowBookByISBN(isbn, employee.id);
   }
+
+  /**
+   * 複数の書籍を一括で貸し出す
+   * @param barcode 社員バーコード
+   * @param isbns ISBN配列
+   * @returns 作成された貸出記録の配列
+   */
+  async borrowMultipleBooks(barcode: string, isbns: string[]): Promise<LoanRecord[]> {
+    // バーコードで社員を検索
+    const employee = await this.employeeRepository.findByBarcode(barcode);
+    if (!employee) {
+      throw new LibraryError(
+        '指定されたバーコードの社員が見つかりません',
+        ErrorCode.EMPLOYEE_NOT_FOUND
+      );
+    }
+
+    // 現在の貸出冊数を確認
+    const activeLoans = await this.loanRepository.findActiveByEmployeeId(employee.id);
+    const totalBooks = activeLoans.length + isbns.length;
+
+    if (totalBooks > this.MAX_LOANS_PER_EMPLOYEE) {
+      throw new LibraryError(
+        `貸出上限（${this.MAX_LOANS_PER_EMPLOYEE}冊）を超えます（現在${activeLoans.length}冊、追加${isbns.length}冊）`,
+        ErrorCode.LOAN_LIMIT_EXCEEDED
+      );
+    }
+
+    // 各書籍を貸し出し
+    const loanRecords: LoanRecord[] = [];
+    const errors: { isbn: string; error: string }[] = [];
+
+    for (const isbn of isbns) {
+      try {
+        const loanRecord = await this.borrowBookByISBN(isbn, employee.id);
+        loanRecords.push(loanRecord);
+      } catch (error: any) {
+        errors.push({
+          isbn,
+          error: error.message || '貸出に失敗しました'
+        });
+      }
+    }
+
+    // エラーがあった場合は詳細を含めて例外を投げる
+    if (errors.length > 0) {
+      const errorMessages = errors.map(e => `${e.isbn}: ${e.error}`).join('\n');
+      throw new LibraryError(
+        `一部の書籍の貸出に失敗しました:\n${errorMessages}`,
+        ErrorCode.BOOK_NOT_FOUND
+      );
+    }
+
+    return loanRecords;
+  }
+
+  /**
+   * 複数の書籍を一括で返却する
+   * @param isbns ISBN配列
+   * @returns 更新された貸出記録の配列
+   */
+  async returnMultipleBooks(isbns: string[]): Promise<LoanRecord[]> {
+    const loanRecords: LoanRecord[] = [];
+    const errors: { isbn: string; error: string }[] = [];
+
+    for (const isbn of isbns) {
+      try {
+        const loanRecord = await this.returnBookByISBN(isbn);
+        loanRecords.push(loanRecord);
+      } catch (error: any) {
+        errors.push({
+          isbn,
+          error: error.message || '返却に失敗しました'
+        });
+      }
+    }
+
+    // エラーがあった場合は詳細を含めて例外を投げる
+    if (errors.length > 0) {
+      const errorMessages = errors.map(e => `${e.isbn}: ${e.error}`).join('\n');
+      throw new LibraryError(
+        `一部の書籍の返却に失敗しました:\n${errorMessages}`,
+        ErrorCode.BOOK_NOT_FOUND
+      );
+    }
+
+    return loanRecords;
+  }
 }

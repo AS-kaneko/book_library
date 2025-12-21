@@ -328,6 +328,15 @@ function registerIPCHandlers(): void {
     }
   });
 
+  // 複数の書籍を一括で貸し出す
+  ipcMain.handle('loans:borrowMultipleBooks', async (_event, barcode: string, isbns: string[]) => {
+    try {
+      return await loanService.borrowMultipleBooks(barcode, isbns);
+    } catch (error) {
+      throw serializeError(error);
+    }
+  });
+
   // 書籍を返却
   ipcMain.handle('loans:return', async (_event, bookId: string) => {
     try {
@@ -341,6 +350,15 @@ function registerIPCHandlers(): void {
   ipcMain.handle('loans:returnByISBN', async (_event, isbn: string) => {
     try {
       return await loanService.returnBookByISBN(isbn);
+    } catch (error) {
+      throw serializeError(error);
+    }
+  });
+
+  // 複数の書籍を一括で返却
+  ipcMain.handle('loans:returnMultipleBooks', async (_event, isbns: string[]) => {
+    try {
+      return await loanService.returnMultipleBooks(isbns);
     } catch (error) {
       throw serializeError(error);
     }
