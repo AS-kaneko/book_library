@@ -74,39 +74,58 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // 社員バーコードスキャン処理
+  // 社員バーコードスキャン・入力処理
   const handleEmployeeBarcodeKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && employeeBarcode) {
       e.preventDefault();
-      try {
-        const employee = await ipcRenderer.invoke('employees:getByBarcode', employeeBarcode);
-        setSelectedEmployee(employee);
-        
-        // 貸出冊数を取得
-        const count = await ipcRenderer.invoke('employees:getActiveLoanCount', employee.id);
-        setEmployeeLoanCount(count);
-        
-        // 次のフィールドにフォーカス
-        bookISBNRef.current?.focus();
-      } catch (error: any) {
-        showError(error.message || getText('errorNotFound'));
-        setSelectedEmployee(null);
-        setEmployeeLoanCount(0);
-      }
+      await searchEmployeeByBarcode(employeeBarcode);
     }
   };
 
-  // 書籍ISBNスキャン処理
+  // バーコードで社員を検索
+  const searchEmployeeByBarcode = async (barcode: string) => {
+    if (!barcode.trim()) {
+      setSelectedEmployee(null);
+      setEmployeeLoanCount(0);
+      return;
+    }
+    try {
+      const employee = await ipcRenderer.invoke('employees:getByBarcode', barcode.trim());
+      setSelectedEmployee(employee);
+
+      // 貸出冊数を取得
+      const count = await ipcRenderer.invoke('employees:getActiveLoanCount', employee.id);
+      setEmployeeLoanCount(count);
+
+      // 次のフィールドにフォーカス
+      bookISBNRef.current?.focus();
+    } catch (error: any) {
+      showError(error.message || getText('errorNotFound'));
+      setSelectedEmployee(null);
+      setEmployeeLoanCount(0);
+    }
+  };
+
+  // 書籍ISBNスキャン・入力処理
   const handleBookISBNKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && bookISBN) {
       e.preventDefault();
-      try {
-        const book = await ipcRenderer.invoke('books:getByISBN', bookISBN);
-        setSelectedBook(book);
-      } catch (error: any) {
-        showError(error.message || getText('errorNotFound'));
-        setSelectedBook(null);
-      }
+      await searchBookByISBN(bookISBN);
+    }
+  };
+
+  // ISBNで書籍を検索
+  const searchBookByISBN = async (isbn: string) => {
+    if (!isbn.trim()) {
+      setSelectedBook(null);
+      return;
+    }
+    try {
+      const book = await ipcRenderer.invoke('books:getByISBN', isbn.trim());
+      setSelectedBook(book);
+    } catch (error: any) {
+      showError(error.message || getText('errorNotFound'));
+      setSelectedBook(null);
     }
   };
 
@@ -137,30 +156,40 @@ const LoanManagementPage: React.FC = () => {
     }
   };
 
-  // 返却ISBNスキャン処理
+  // 返却ISBNスキャン・入力処理
   const handleReturnISBNKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && returnISBN) {
       e.preventDefault();
-      try {
-        const book = await ipcRenderer.invoke('books:getByISBN', returnISBN);
-        setReturnBook(book);
-        
-        // 貸出情報を取得
-        const loans = await ipcRenderer.invoke('loans:getHistory', book.id);
-        const activeLoan = loans.find((loan: LoanRecord) => loan.status === 'active');
-        
-        if (activeLoan) {
-          const employee = await ipcRenderer.invoke('employees:getById', activeLoan.employeeId);
-          setReturnLoanInfo({ ...activeLoan, employeeName: employee?.name });
-        } else {
-          setReturnLoanInfo(null);
-          showError(getText('errorNotFound'));
-        }
-      } catch (error: any) {
-        showError(error.message || getText('errorNotFound'));
-        setReturnBook(null);
+      await searchReturnBookByISBN(returnISBN);
+    }
+  };
+
+  // 返却書籍をISBNで検索
+  const searchReturnBookByISBN = async (isbn: string) => {
+    if (!isbn.trim()) {
+      setReturnBook(null);
+      setReturnLoanInfo(null);
+      return;
+    }
+    try {
+      const book = await ipcRenderer.invoke('books:getByISBN', isbn.trim());
+      setReturnBook(book);
+
+      // 貸出情報を取得
+      const loans = await ipcRenderer.invoke('loans:getHistory', book.id);
+      const activeLoan = loans.find((loan: LoanRecord) => loan.status === 'active');
+
+      if (activeLoan) {
+        const employee = await ipcRenderer.invoke('employees:getById', activeLoan.employeeId);
+        setReturnLoanInfo({ ...activeLoan, employeeName: employee?.name });
+      } else {
         setReturnLoanInfo(null);
+        showError(getText('errorNotFound'));
       }
+    } catch (error: any) {
+      showError(error.message || getText('errorNotFound'));
+      setReturnBook(null);
+      setReturnLoanInfo(null);
     }
   };
 
@@ -247,15 +276,25 @@ const LoanManagementPage: React.FC = () => {
           </h3>
 
           <div className="space-y-4">
-            <Input
-              ref={employeeBarcodeRef}
-              label={getText('labelMemberBarcode')}
-              value={employeeBarcode}
-              onChange={setEmployeeBarcode}
-              onKeyDown={handleEmployeeBarcodeKeyDown}
-              placeholder={getText('placeholderMemberBarcode')}
-              autoFocus
-            />
+            <div>
+              <Input
+                ref={employeeBarcodeRef}
+                label={getText('labelMemberBarcode')}
+                value={employeeBarcode}
+                onChange={setEmployeeBarcode}
+                onKeyDown={handleEmployeeBarcodeKeyDown}
+                placeholder={getText('placeholderMemberBarcode')}
+                autoFocus
+              />
+              <Button
+                onClick={() => searchEmployeeByBarcode(employeeBarcode)}
+                disabled={!employeeBarcode}
+                variant="secondary"
+                className="w-full mt-2"
+              >
+                検索
+              </Button>
+            </div>
 
             {selectedEmployee && (
               <div className="bg-blue-50 p-4 rounded border border-blue-200">
@@ -271,15 +310,24 @@ const LoanManagementPage: React.FC = () => {
               </div>
             )}
 
-            <Input
-              ref={bookISBNRef}
-              label={getText('labelBookBarcode')}
-              value={bookISBN}
-              onChange={setBookISBN}
-              onKeyDown={handleBookISBNKeyDown}
-              placeholder={getText('placeholderBookBarcode')}
-              disabled={!selectedEmployee}
-            />
+            <div>
+              <Input
+                ref={bookISBNRef}
+                label={getText('labelBookBarcode')}
+                value={bookISBN}
+                onChange={setBookISBN}
+                onKeyDown={handleBookISBNKeyDown}
+                placeholder={getText('placeholderBookBarcode')}
+              />
+              <Button
+                onClick={() => searchBookByISBN(bookISBN)}
+                disabled={!bookISBN}
+                variant="secondary"
+                className="w-full mt-2"
+              >
+                検索
+              </Button>
+            </div>
 
             {selectedBook && (
               <div className="bg-green-50 p-4 rounded border border-green-200">
@@ -322,14 +370,24 @@ const LoanManagementPage: React.FC = () => {
           </h3>
 
           <div className="space-y-4">
-            <Input
-              ref={returnISBNRef}
-              label={getText('labelBookBarcode')}
-              value={returnISBN}
-              onChange={setReturnISBN}
-              onKeyDown={handleReturnISBNKeyDown}
-              placeholder={getText('placeholderBookBarcode')}
-            />
+            <div>
+              <Input
+                ref={returnISBNRef}
+                label={getText('labelBookBarcode')}
+                value={returnISBN}
+                onChange={setReturnISBN}
+                onKeyDown={handleReturnISBNKeyDown}
+                placeholder={getText('placeholderBookBarcode')}
+              />
+              <Button
+                onClick={() => searchReturnBookByISBN(returnISBN)}
+                disabled={!returnISBN}
+                variant="secondary"
+                className="w-full mt-2"
+              >
+                検索
+              </Button>
+            </div>
 
             {returnBook && (
               <div className="bg-yellow-50 p-4 rounded border border-yellow-200">

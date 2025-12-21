@@ -58,6 +58,7 @@ export class EmployeeRepository implements IRepository<Employee> {
 
   async findByBarcode(barcode: string): Promise<Employee | null> {
     const employees = await this.findAll();
-    return employees.find((employee) => employee.barcode === barcode) || null;
+    const trimmedBarcode = barcode.trim();
+    return employees.find((employee) => employee.barcode.trim() === trimmedBarcode) || null;
   }
 }
