@@ -1,8 +1,8 @@
-import { v4 as uuidv4 } from 'uuid';
-import { LoanRecord, LoanStatus, BookStatus, LibraryError, ErrorCode } from '../models';
-import { LoanRepository } from '../repositories/LoanRepository';
-import { BookRepository } from '../repositories/BookRepository';
-import { EmployeeRepository } from '../repositories/EmployeeRepository';
+import {v4 as uuidv4} from 'uuid';
+import {BookStatus, ErrorCode, LibraryError, LoanRecord, LoanStatus} from '../models';
+import {LoanRepository} from '../repositories/LoanRepository';
+import {BookRepository} from '../repositories/BookRepository';
+import {EmployeeRepository} from '../repositories/EmployeeRepository';
 
 /**
  * 貸出サービス
@@ -326,5 +326,161 @@ export class LoanService {
     }
 
     return loanRecords;
+  }
+
+  /**
+   * 貸出期限を変更する（延長・短縮）
+   * @param loanId 貸出記録ID
+   * @param days 変更日数（正の値で延長、負の値で短縮）
+   * @returns 更新された貸出記録
+   */
+  async extendDueDate(loanId: string, days: number): Promise<LoanRecord> {
+    // 貸出記録の取得
+    const loan = await this.loanRepository.findById(loanId);
+    if (!loan) {
+      throw new LibraryError(
+        '指定された貸出記録が見つかりません',
+        ErrorCode.BOOK_NOT_FOUND
+      );
+    }
+
+    // アクティブな貸出かチェック
+    if (loan.status !== LoanStatus.ACTIVE) {
+      throw new LibraryError(
+        'この貸出記録は既に返却済みです',
+        ErrorCode.BOOK_NOT_BORROWED
+      );
+    }
+
+    // 日数のバリデーション
+    if (days < -365 || days > 365) {
+      throw new LibraryError(
+        '変更日数は-365日以上365日以下で指定してください',
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    // 返却期限を変更
+    const currentDueDate = loan.dueDate ? new Date(loan.dueDate) : new Date();
+    const newDueDate = new Date(currentDueDate);
+    newDueDate.setDate(newDueDate.getDate() + days);
+
+    // 貸出記録を更新
+    const updatedLoan = await this.loanRepository.update(loanId, {
+      dueDate: newDueDate,
+    });
+
+    return updatedLoan;
+  }
+
+  /**
+   * 貸出期限を直接指定する
+   * @param loanId 貸出記録ID
+   * @param dueDate 新しい返却期限
+   * @returns 更新された貸出記録
+   */
+  async setDueDate(loanId: string, dueDate: string): Promise<LoanRecord> {
+    // 貸出記録の取得
+    const loan = await this.loanRepository.findById(loanId);
+    if (!loan) {
+      throw new LibraryError(
+        '指定された貸出記録が見つかりません',
+        ErrorCode.BOOK_NOT_FOUND
+      );
+    }
+
+    // アクティブな貸出かチェック
+    if (loan.status !== LoanStatus.ACTIVE) {
+      throw new LibraryError(
+        'この貸出記録は既に返却済みです',
+        ErrorCode.BOOK_NOT_BORROWED
+      );
+    }
+
+    // 日付のバリデーション
+    const newDueDate = new Date(dueDate);
+    if (isNaN(newDueDate.getTime())) {
+      throw new LibraryError(
+        '無効な日付形式です',
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    // 貸出記録を更新
+    const updatedLoan = await this.loanRepository.update(loanId, {
+      dueDate: newDueDate,
+    });
+
+    return updatedLoan;
+  }
+
+  /**
+   * 手動で貸出を作成する（管理画面用）
+   * @param bookId 書籍ID
+   * @param employeeId 社員ID
+   * @param loanDays 貸出期間（日数）
+   * @returns 作成された貸出記録
+   */
+  async createManualLoan(bookId: string, employeeId: string, loanDays: number): Promise<LoanRecord> {
+    // 書籍の存在確認
+    const book = await this.bookRepository.findById(bookId);
+    if (!book) {
+      throw new LibraryError(
+        '指定された書籍が見つかりません',
+        ErrorCode.BOOK_NOT_FOUND
+      );
+    }
+
+    // 社員の存在確認
+    const employee = await this.employeeRepository.findById(employeeId);
+    if (!employee) {
+      throw new LibraryError(
+        '指定された社員が見つかりません',
+        ErrorCode.EMPLOYEE_NOT_FOUND
+      );
+    }
+
+    // 社員の貸出上限チェック
+    const activeLoans = await this.loanRepository.findActiveByEmployeeId(employeeId);
+    if (activeLoans.length >= this.MAX_LOANS_PER_EMPLOYEE) {
+      throw new LibraryError(
+        `貸出上限（${this.MAX_LOANS_PER_EMPLOYEE}冊）に達しています`,
+        ErrorCode.LOAN_LIMIT_EXCEEDED
+      );
+    }
+
+    // 日数のバリデーション
+    if (loanDays <= 0 || loanDays > 365) {
+      throw new LibraryError(
+        '貸出期間は1日以上365日以下で指定してください',
+        ErrorCode.VALIDATION_ERROR
+      );
+    }
+
+    // 返却期限を計算
+    const borrowedAt = new Date();
+    const dueDate = new Date(borrowedAt);
+    dueDate.setDate(dueDate.getDate() + loanDays);
+
+    // 貸出記録を作成
+    const loanRecord: LoanRecord = {
+      id: uuidv4(),
+      bookId,
+      employeeId,
+      borrowedAt,
+      dueDate,
+      status: LoanStatus.ACTIVE,
+    };
+
+    // 貸出記録を保存
+    const savedLoan = await this.loanRepository.save(loanRecord);
+
+    // 書籍の状態を更新（既に貸出中でも強制的に上書き）
+    await this.bookRepository.update(bookId, {
+      status: BookStatus.BORROWED,
+      currentBorrowerId: employeeId,
+    });
+
+    return savedLoan;
   }
 }

@@ -390,6 +390,33 @@ function registerIPCHandlers(): void {
       throw serializeError(error);
     }
   });
+
+  // 貸出期限を延長・短縮
+  ipcMain.handle('loans:extend', async (_event, loanId: string, days: number) => {
+    try {
+      return await loanService.extendDueDate(loanId, days);
+    } catch (error) {
+      throw serializeError(error);
+    }
+  });
+
+  // 貸出期限を直接指定
+  ipcMain.handle('loans:setDueDate', async (_event, loanId: string, dueDate: string) => {
+    try {
+      return await loanService.setDueDate(loanId, dueDate);
+    } catch (error) {
+      throw serializeError(error);
+    }
+  });
+
+  // 手動で貸出を作成
+  ipcMain.handle('loans:createManual', async (_event, bookId: string, employeeId: string, loanDays: number) => {
+    try {
+      return await loanService.createManualLoan(bookId, employeeId, loanDays);
+    } catch (error) {
+      throw serializeError(error);
+    }
+  });
 }
 
 /**
